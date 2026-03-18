@@ -1,5 +1,7 @@
 # Bliss 2.0 File Format Specification
 
+See ARCHITECTURE.md for implementation decisions (language, dependencies, project structure, testing approach).
+
 ## Storage Backend
 
 The store is a git repository. Git is not one of several possible backends — it is a core part of the design. Timestamps, history, and the integrity of the audit trail all depend on git. Every change to the store results in an immediate commit.

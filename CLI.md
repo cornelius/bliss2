@@ -5,13 +5,17 @@
 - UUIDs are never shown to the user. Todos are always identified by title and position.
 - Every change to the store results in an immediate git commit.
 - The current context is determined by walking up the directory tree from the working directory, using the first `.bliss-context` file found.
-- Interactive mode is the primary interface for acting on todos. Non-interactive commands exist for quick use and scripting.
+- Commands are either strictly non-interactive or strictly interactive. No command switches between modes based on arguments or flags.
 
 ---
 
 ## Commands
 
-### `bliss init`
+### Non-Interactive Commands
+
+Non-interactive commands produce plain text output or perform a single action. They are suitable for scripting and quick use from the command line.
+
+#### `bliss init`
 
 Initializes a context in the current directory.
 
@@ -25,9 +29,7 @@ bliss init
 bliss init --name "My Project"
 ```
 
----
-
-### `bliss add <title>`
+#### `bliss add <title>`
 
 Captures a new todo in the current context.
 
@@ -42,26 +44,46 @@ bliss add Feed the penguins --list today
 bliss add Feed the penguins --list today --urgent
 ```
 
----
+#### `bliss list [list-name]`
 
-### `bliss list [list-name]`
-
-Displays todos in the current context.
+Displays todos in the current context with position numbers.
 
 - Without arguments: shows all todos, named lists first (in default order), inbox last.
 - With a list name: shows only that list.
 - `inbox` is a valid list name and shows floating todos not in any named list.
-- By default the output is interactive (see Interactive Mode below).
-- `--no-interactive` prints a plain text list, suitable for piping or scripting.
+- Writes a session mapping (`~/.bliss/session.txt`) of position numbers to UUIDs. This mapping is the basis for `bliss done <number>`.
 
 ```
 bliss list
 bliss list today
 bliss list inbox
-bliss list --no-interactive
 ```
 
-#### Interactive Mode
+#### `bliss done <number>`
+
+Completes (deletes) the todo at the given position number.
+
+- Position numbers come from the last `bliss list` output.
+- Errors if no session mapping exists (i.e. `bliss list` has not been run yet).
+- Removes the todo file and any references to it in list files.
+
+```
+bliss done 3
+```
+
+---
+
+### Interactive Commands
+
+Interactive commands take over the terminal and allow navigation and action via keyboard. They never print plain text output.
+
+#### `bliss check [list-name]`
+
+Interactive view of a single list for navigating and completing todos.
+
+- Without arguments: shows all todos in the current context (named lists first, inbox last).
+- With a list name: shows only that list.
+- Does not support multi-list switching or touched state — use `bliss groom` for that.
 
 Navigation:
 - Arrow keys to move between todos.
@@ -69,32 +91,22 @@ Navigation:
 - `space` or `d` to complete (delete) the selected todo.
 - `q` to quit.
 
----
-
-### `bliss done [number]`
-
-Completes (deletes) a todo.
-
-- With a number: completes the todo at that position in the current list output. Position numbers are ephemeral — they reflect the current output of `bliss list`.
-- Without arguments: opens interactive mode, equivalent to `bliss list`.
-
 ```
-bliss done
-bliss done 3
+bliss check
+bliss check today
+bliss check inbox
 ```
 
----
-
-### `bliss groom [list-name]`
+#### `bliss groom [list-name]`
 
 Interactive grooming mode for organizing todos across lists.
 
 - Without arguments: starts with the inbox (incoming).
 - With a list name: starts with that list.
-- Shows one list at a time. The current list fills the view, with todos in order including section separators.
-- Todos already acted on in the current session are marked as touched and not shown again, even if they appear in another list during the session.
+- Shows one list at a time. The current list fills the view with todos in order including section separators.
+- Todos already acted on in the current session are marked as touched and not shown again, even if they appear in another list during the session. Touched state is in-memory only and is lost when grooming ends.
 
-#### Default Lists
+##### Default Lists
 
 The default personal Kanban lists are shown in this order:
 
@@ -104,13 +116,13 @@ The default personal Kanban lists are shown in this order:
 4. Next Week
 5. Later
 
-#### Navigation
+##### Navigation
 
 - Arrow keys to move between todos.
 - Tab / Shift-Tab to switch to the next / previous list.
 - Number keys to jump directly to a list (1–5 for the default lists).
 
-#### Acting on a Todo
+##### Acting on a Todo
 
 - A number key moves the selected todo to the corresponding **section** of the current list.
 - A list key (e.g. `t` for today, `w` for this week) moves the todo to the end of that list.
@@ -120,7 +132,7 @@ The default personal Kanban lists are shown in this order:
 
 When a todo is moved or completed it disappears from the current view immediately.
 
-#### List Sections
+##### List Sections
 
 Sections within a list are separated by `---` lines in the list file, optionally named (`--- urgent`). Sections are numbered 1–9 within each list and can be targeted when moving todos.
 
@@ -128,13 +140,19 @@ Sections within a list are separated by `---` lines in the list file, optionally
 
 ## Rationale
 
-### Interactive mode as default for `bliss list`
+### Strict separation of interactive and non-interactive commands
 
-The primary way to act on todos is by navigating a list. Making interactive mode the default removes the need for a separate command to enter it, while `--no-interactive` preserves scripting use cases.
+Each command is either fully interactive or fully non-interactive — there are no flags to switch modes. This makes the behavior of each command predictable and keeps the implementation of each command focused. It also makes scripting reliable: non-interactive commands always produce consistent plain text output.
 
-### `bliss done` as a shortcut
+An earlier design had `bliss list` default to interactive mode with a `--no-interactive` flag. This was abandoned because mixing modes in one command blurs its purpose and makes it harder to compose with other tools.
 
-`bliss done <number>` allows completing a todo without entering interactive mode — useful when the list is fresh in mind and the position is known. Without arguments it falls back to interactive mode, making it a consistent entry point.
+### `bliss list` and session mapping
+
+`bliss done <number>` needs stable position numbers between the `bliss list` call and the `bliss done` call. The session mapping file (`~/.bliss/session.txt`) records the UUID at each position as shown by the last `bliss list`. This mapping is replaced on every `bliss list` call. `bliss done` without a prior `bliss list` errors rather than guessing.
+
+### `bliss check` vs `bliss groom`
+
+Both are interactive but serve different purposes. `bliss check` is for quickly navigating and completing todos in a single list — a lightweight view. `bliss groom` is for a full grooming session across multiple lists with touched state tracking. Keeping them separate keeps each command focused and avoids a complex mode-switching interface in a single command.
 
 ### Grooming starts with inbox
 
@@ -146,7 +164,7 @@ Grooming session state (which todos have been acted on) is not persisted to disk
 
 ### Title editing inline
 
-Opening an external editor ($EDITOR) for title editing would be a context switch. Inline editing keeps the user in the terminal UI and the flow unbroken. Body editing is out of scope for the initial version.
+Opening an external editor (`$EDITOR`) for title editing would be a context switch. Inline editing keeps the user in the terminal UI and the flow unbroken. Body editing is out of scope for the initial version.
 
 ### `--urgent` only with `--list`
 

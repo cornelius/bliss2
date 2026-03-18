@@ -22,45 +22,23 @@ Underlying principle: Minimize brain cycles spent on todos. Free your mind to th
 
 ### Format for storing todos
 
-Use plain text to store todos. Must be easily version controllable. Changes should be tracable also by humans in a diff. When edited by multiple clients, merge conflicts should be minimized and easily be resolvable.
+Each todo is stored as a plain text file. The first line is the title, followed by an optional body separated by a blank line. Todo data and ordering are stored separately — reprioritizing a todo does not change the todo file itself.
 
-Needs to support context, i.e. a kind of tag to provide some meta information about where and when the todo is relevant.
+Todos are organized in lists. Lists are plain text files with one todo identifier per line. Lists can have optional sections separated by `---` for micro-grouping.
 
-Needs to support creation and updated information, so it's clear when things change.
-
-Needs to support grouping, so I can make sub lists, or represent columns on a board.
-
-Possible implementation: One line per todo. Research existing formats.
-
-A hand-written TODO or TODO.md file with a list of bullet points should be a valid way to store todos. Maybe we need different format flavors.
+See SPEC.md for the full format specification.
 
 ### Storage backend
 
-Version controlled syncable storage. Possible implementation git.
+Git is the storage backend. The store is a git repository at `~/.bliss2/`. Every change results in an immediate commit. Sync between computers is handled by git remotes.
 
-Should be possible to sync todos between different computers.
-
-If doable, should support encryption to be able to share data without having to trust transport or servers used to store the data. Don't start with that, but don't take design decisions which prevent it for the future.
-
-One other possible implementation could be my project happiness.
-
-It should be supported to have multiple files with todos at different locations. It should be possible to aggregate them.
-
-Idea to explore for the future: Use issue trackers as backend. Or make content of issue trackers available through Bliss 2.0.
+It should be possible to aggregate todos across multiple contexts.
 
 ### Capturing todos
 
-Command line client to capture todos. Store context of working directory. So if a directory serves as container for a project, it should be able to capture todos for this project by just calling a simple command there.
+`bliss add <title>` captures a todo in the current context. Context is determined by a `.bliss-context` marker file in the current or any parent directory, initialized with `bliss init`.
 
-There should be a central file in the home directory (following standard conventiosn such as .local), to register places where todos are captured. So it is possible to provide a global overview of todos.
-
-There are cases, where a local TODO.md is a good way to capture todos, in other cases maybe a gloval file with a richer special format (see section about format) is better. Do we need to sync both in some way?
-
-It also should be possible to have other input channels, e.g. a mobile app, so todos can be captured on the go. It should be possible to assign them to a project, so they end up in the right context.
-
-A graphical app should of course also be possible and supported. Maybe a widget or helper which sits in the menu bar or something like that.
-
-It could be nice to auto-tag todos based on their content, so that they are assigned to the right context.
+It should also be possible to capture todos from other input channels, e.g. a mobile app, so todos can be captured on the go.
 
 ### Retrieving todos
 
@@ -90,38 +68,22 @@ Completing a todo should be fund and satisfying experience. Like taking a piece 
 
 It also should be possible to remove todos. Not sure if it matters to make a difference between completing and removing a todo. Maybe not. And removing a todo can also be satisfying.
 
-### Sketch for command line client
+### Command line client
 
-Initialize a directory to store todos: `bliss init`. This sets up this directory and all subdirectories as context for todos.
+- `bliss init` — initialize a directory as a todo context
+- `bliss add <title>` — capture a todo in the current context
+- `bliss list` — list todos with position numbers
+- `bliss done <number>` — complete a todo by position number
+- `bliss check` — interactive view to navigate and complete todos
+- `bliss groom` — interactive grooming across lists
 
-If there are multiple contexts, i.e. a directory hierarchy, where contexts are set up on different levels, the most specific context should be used.
-
-Store a todo: `bliss add Feed the penguins` (implicitly stores creation time, and context)
-
-List all todos of a context: `bliss list`.
-
-Not sure how to mark a todo as done. Possible options:
-
-* Let `bliss list` show ids for each todo. Close them with `bliss done <id>`. Could be a hassle to type. Also what should be the id? If it's long such as an uuid, it's hard to type. If it's short such as a running number, are ids changing then when others are done or removed?
-* Have an interactive mode, where todos can be completed by choosing them from the list and check them off, e.g. with cursor keys and enter or space.
-* Have a graphical applications for that. Could mean context switching when adding and completing todos.
-* Manually edit the file where todos are stored (this should always be possible as an additional option).
-
-Grooming todos could be done as interactive mode on `bliss groom`. It would present all todos (maybe one after each other), and give an option to move it to one of multiple buckets. These buckets could be templates or user-defined or some default categories.
+See CLI.md for the full command specification.
 
 ### Technical decisions
 
-All command line clients should be implemented in Go, so that executable can easily be installed without dependencies. It also gives an efficient language to write performant clients.
-
-There should be an Android app to capture todos.
-
-### Technical considerations
-
-Need to evaluate if these could be the right decisions.
-
-* Git as storage backend
-* Event sourcing to gather and aggregate todos
-* A REST API to store todos on the server (an existing protocol such as WebDAV (could give compatibility with Nextcloud etc.))
+- CLI implemented in Go (module `github.com/cornelius/bliss2`, binary `bliss`)
+- Git as storage backend (`~/.bliss2/`)
+- An Android app for mobile capture is planned
 
 ### Extensions
 
