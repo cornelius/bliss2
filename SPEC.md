@@ -80,6 +80,26 @@ There are two kinds of lists:
 - **Context lists** — live inside a context directory. Shared within a team when the store is version controlled collaboratively.
 - **Personal lists** — live at the store root. Cross-context, private to the user.
 
+## List Sections
+
+A list file can be divided into sections using a separator line:
+
+```
+a1b2c3d4-e5f6-7890-abcd-ef1234567890
+---
+7f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+```
+
+A separator is a line containing only `---`, optionally followed by a section name:
+
+```
+--- urgent
+```
+
+Sections allow micro-grouping within a list without creating separate list files. A list can have 1 to 5 sections; up to 9 is the hard limit. Sections have no semantic meaning to the data model — they are a presentation and prioritization aid.
+
+The default personal lists follow the personal Kanban framework: `incoming`, `today`, `this-week`, `next-week`, `later`. These can be customized.
+
 ## Inbox
 
 Todos that are not referenced by any list file are considered to be in the inbox. There is no explicit inbox file. The inbox is a virtual view — all todos in a context not appearing in any list. Inbox todos are ordered by creation time, derived from git history.
