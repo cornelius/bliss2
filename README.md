@@ -76,14 +76,26 @@ It also should be possible to remove todos. Not sure if it matters to make a dif
 # Run tests
 go test ./...
 
-# Build
-go build -o bliss ./cmd/bliss
+# Build and run locally without installing
+go build ./cmd/bliss
+./bliss
+```
 
-# Install to $GOPATH/bin
+## Installation
+
+Add `~/go/bin` to your PATH once (e.g. in `~/.zshrc`):
+
+```sh
+export PATH="$PATH:$HOME/go/bin"
+```
+
+Then install:
+
+```sh
 go install ./cmd/bliss
 ```
 
-**Quick start:**
+## Usage
 
 ```sh
 cd my-project
