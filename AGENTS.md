@@ -18,6 +18,8 @@ go test ./...
 go build ./cmd/bliss
 ```
 
+**Never test manually.** If something needs verifying, write a test for it. Manual runs are not repeatable and don't protect against regressions.
+
 ## Issue tracking
 
 Todos for this project are tracked in bliss itself. The store is at `~/.bliss2/`. The context is the repo root (`.bliss-context` file).

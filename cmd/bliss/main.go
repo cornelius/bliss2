@@ -6,7 +6,9 @@ import (
 	"bliss/internal/store"
 	"bliss/internal/todo"
 	"bliss/internal/ui"
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -115,15 +117,34 @@ func addCmd() *cobra.Command {
 	var urgent bool
 
 	cmd := &cobra.Command{
-		Use:   "add <title>",
+		Use:   "add [title]",
 		Short: "Add a new todo",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if urgent && listName == "" {
 				return fmt.Errorf("--urgent requires --list")
 			}
 
-			title := strings.Join(args, " ")
+			var title string
+			if len(args) > 0 {
+				title = strings.Join(args, " ")
+			} else {
+				fi, err := os.Stdin.Stat()
+				if err != nil {
+					return fmt.Errorf("reading stdin: %w", err)
+				}
+				if fi.Mode()&os.ModeCharDevice != 0 {
+					fmt.Print("Title: ")
+				}
+				line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+				if err != nil && err != io.EOF {
+					return fmt.Errorf("reading title: %w", err)
+				}
+				title = strings.TrimSpace(line)
+				if title == "" {
+					return fmt.Errorf("title cannot be empty")
+				}
+			}
 
 			cwd, err := os.Getwd()
 			if err != nil {

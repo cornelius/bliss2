@@ -33,15 +33,18 @@ bliss init --name "My Project"
 
 Captures a new todo in the current context.
 
-- The title is taken from command line arguments.
+- If a title is given as arguments, they are joined with spaces. Because the title is passed through the shell, special characters (apostrophes, quotes) must be quoted: `bliss add "Fix John's bug"`.
+- If no arguments are given, bliss reads the title from stdin. In an interactive terminal it prints a `Title:` prompt; when stdin is a pipe it reads one line silently. This avoids shell quoting entirely for titles with special characters.
 - By default the todo lands in the inbox (not added to any list).
 - `--list/-l <name>` adds the todo directly to a named list, appended to the end.
 - `--urgent` places the todo at the top of the target list. Only valid in combination with `--list`.
 
 ```
-bliss add Feed the penguins
-bliss add Feed the penguins -l today
-bliss add Feed the penguins -l today --urgent
+bliss add "Feed the penguins"
+bliss add "Fix John's bug" -l today
+bliss add                              # prompts for title interactively
+echo "Fix John's bug" | bliss add     # reads title from pipe
+bliss add "Feed the penguins" -l today --urgent
 ```
 
 #### `bliss list [list-name]`

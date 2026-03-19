@@ -51,6 +51,17 @@ func bliss(t *testing.T, dir string, env []string, args ...string) (string, erro
 	return strings.TrimRight(string(out), "\n"), err
 }
 
+// blissStdin runs the bliss binary with stdin piped from the given string.
+func blissStdin(t *testing.T, dir string, env []string, stdin string, args ...string) (string, error) {
+	t.Helper()
+	cmd := exec.Command(binaryPath, args...)
+	cmd.Dir = dir
+	cmd.Env = env
+	cmd.Stdin = strings.NewReader(stdin)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimRight(string(out), "\n"), err
+}
+
 func TestAdd_titleWithApostrophe(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
@@ -136,5 +147,52 @@ func TestAdd_noListInOutputWhenInbox(t *testing.T) {
 	}
 	if strings.Contains(out, "[") {
 		t.Errorf("output %q should not mention a list when added to inbox", out)
+	}
+}
+
+func TestAdd_stdinTitle(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	if _, err := bliss(t, dir, env, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+
+	title := "Fix John's bug"
+	out, err := blissStdin(t, dir, env, title+"\n", "add")
+	if err != nil {
+		t.Fatalf("add via stdin: %v", err)
+	}
+	if !strings.Contains(out, title) {
+		t.Errorf("output %q does not contain title", out)
+	}
+
+	out, err = bliss(t, dir, env, "list")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if !strings.Contains(out, title) {
+		t.Errorf("list output %q does not contain title", out)
+	}
+}
+
+func TestAdd_stdinTitleWithList(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	if _, err := bliss(t, dir, env, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+
+	title := `He said "hello"`
+	out, err := blissStdin(t, dir, env, title+"\n", "add", "-l", "today")
+	if err != nil {
+		t.Fatalf("add via stdin: %v", err)
+	}
+	if !strings.Contains(out, "[today]") {
+		t.Errorf("output %q should mention target list", out)
+	}
+	if !strings.Contains(out, title) {
+		t.Errorf("output %q does not contain title", out)
 	}
 }
