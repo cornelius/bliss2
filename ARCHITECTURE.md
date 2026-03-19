@@ -1,4 +1,4 @@
-# Bliss 2.0 Architecture
+# Bliss 2 Architecture
 
 ## Project Structure
 

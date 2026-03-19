@@ -1,4 +1,4 @@
-# Bliss 2.0 File Format Specification
+# Bliss 2 File Format Specification
 
 See ARCHITECTURE.md for implementation decisions (language, dependencies, project structure, testing approach).
 

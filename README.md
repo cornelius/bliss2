@@ -1,4 +1,4 @@
-# Bliss 2.0
+# Bliss 2
 
 Peace of mind with todos. Note them down when something occurs to you. Get them back to the top of your head when needed. With context. With the lowest effort possible.
 

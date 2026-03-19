@@ -1,4 +1,4 @@
-# Bliss 2.0 CLI Specification
+# Bliss 2 CLI Specification
 
 ## General Principles
 
