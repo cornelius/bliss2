@@ -196,3 +196,77 @@ func TestAdd_stdinTitleWithList(t *testing.T) {
 		t.Errorf("output %q does not contain title", out)
 	}
 }
+
+func TestPersonalMode_addAndList(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir() // no bliss init
+
+	out, err := bliss(t, dir, env, "add", "Buy oat milk")
+	if err != nil {
+		t.Fatalf("add in personal mode: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Buy oat milk") {
+		t.Errorf("add output %q missing title", out)
+	}
+
+	out, err = bliss(t, dir, env, "list")
+	if err != nil {
+		t.Fatalf("list in personal mode: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Buy oat milk") {
+		t.Errorf("list output %q missing title", out)
+	}
+}
+
+func TestPersonalMode_addToList(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	out, err := bliss(t, dir, env, "add", "Urgent task", "-l", "today")
+	if err != nil {
+		t.Fatalf("add to list in personal mode: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "[today]") {
+		t.Errorf("output %q missing list name", out)
+	}
+
+	out, err = bliss(t, dir, env, "list", "today")
+	if err != nil {
+		t.Fatalf("list today in personal mode: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Urgent task") {
+		t.Errorf("list today output %q missing title", out)
+	}
+}
+
+func TestPersonalMode_done(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	bliss(t, dir, env, "add", "Complete me")
+	bliss(t, dir, env, "list")
+
+	out, err := bliss(t, dir, env, "done", "1")
+	if err != nil {
+		t.Fatalf("done in personal mode: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Done:") {
+		t.Errorf("done output %q missing confirmation", out)
+	}
+}
+
+func TestPersonalMode_move(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	bliss(t, dir, env, "add", "Move me")
+	bliss(t, dir, env, "list")
+
+	out, err := bliss(t, dir, env, "move", "1", "-l", "today")
+	if err != nil {
+		t.Fatalf("move in personal mode: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Moved to [today]") {
+		t.Errorf("move output %q missing confirmation", out)
+	}
+}

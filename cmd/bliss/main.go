@@ -151,10 +151,7 @@ func addCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, err := blisscontext.FindContext(cwd)
-			if err != nil {
-				return err
-			}
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
@@ -212,10 +209,7 @@ func listCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, err := blisscontext.FindContext(cwd)
-			if err != nil {
-				return err
-			}
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
@@ -350,10 +344,7 @@ func doneCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, err := blisscontext.FindContext(cwd)
-			if err != nil {
-				return err
-			}
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
@@ -407,10 +398,7 @@ func moveCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, err := blisscontext.FindContext(cwd)
-			if err != nil {
-				return err
-			}
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
@@ -466,10 +454,7 @@ func checkCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, err := blisscontext.FindContext(cwd)
-			if err != nil {
-				return err
-			}
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
@@ -508,10 +493,7 @@ func groomCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, err := blisscontext.FindContext(cwd)
-			if err != nil {
-				return err
-			}
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
@@ -747,10 +729,7 @@ func historyCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("getting current directory: %w", err)
 				}
-				contextUUID, _, err = blisscontext.FindContext(cwd)
-				if err != nil {
-					return err
-				}
+				contextUUID, _, _ = blisscontext.FindContext(cwd)
 			}
 
 			entries, err := s.ReadHistory(contextUUID)
