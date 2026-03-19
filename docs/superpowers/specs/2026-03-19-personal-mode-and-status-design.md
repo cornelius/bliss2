@@ -82,7 +82,7 @@ Previously, `FindContext` returning no result caused every command to error. Aft
 
 ### bliss init guard
 
-`bliss init` errors if run from the home directory or any ancestor of `~/.bliss2`:
+`bliss init` errors if run from the home directory (`~`):
 
 ```
 cannot init a context in the home directory — use personal mode instead
@@ -134,6 +134,7 @@ Replaces `bliss contexts`. Non-interactive, plain text output.
 - "personal mode" header instead of a context name.
 - Other contexts shown as compact summaries.
 - Git sync line always shown: remote status, or `no remote` if none configured.
+- Lists with zero todos are omitted from all output in `bliss status`.
 
 ### bliss contexts
 
@@ -145,19 +146,27 @@ Removed. `bliss status` covers all its use cases.
 
 The `store` package is extended to handle personal todos and the new metadata:
 
-### Todo methods extended for personal mode
+### Store auto-initialization
+
+`store.Open()` currently errors if `~/.bliss2` does not exist. In personal mode, a first-time user running any command must not hit this error. `store.Open()` is changed to auto-create the store directory (and git init it) if it does not exist — equivalent to calling `store.Init()` transparently. This ensures personal mode works with zero setup.
+
+### TodosDir for personal mode
+
+The internal `TodosDir(contextUUID)` helper currently always constructs `~/.bliss2/contexts/<uuid>/todos/`. When `contextUUID` is `""` this produces a broken path. `TodosDir` must branch on empty string and return `~/.bliss2/todos/` when `contextUUID` is `""`. This mirrors the pattern already used by `WriteList`/`ReadList` for personal lists.
+
+All higher-level todo methods follow from this fix:
 
 - `WriteTodo("", t)` — writes to `~/.bliss2/todos/<uuid>.md`
 - `ReadTodo("", uuid)` — reads from `~/.bliss2/todos/<uuid>.md`
 - `DeleteTodo("", uuid)` — deletes from `~/.bliss2/todos/`
 - `ListTodos("")` — lists `~/.bliss2/todos/`
-- `FindTodo(uuid)` — extended to also search `~/.bliss2/todos/`
+- `FindTodo(uuid)` — extended to search personal todos (`~/.bliss2/todos/`) first, then all context todos
 - `RemoveFromAllLists("", uuid)` — removes from personal lists
 
 ### Context metadata extended
 
 - `WriteContextMeta(uuid, name, path string)` — stores name and init path
-- `ReadContextMeta(uuid)` returns `(name, path string, err error)`
+- `ReadContextMeta(uuid)` returns `(name, path string, err error)` — note this is a breaking signature change from the current `(string, error)`; all call sites must be updated
 
 ### New git sync method
 
