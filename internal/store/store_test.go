@@ -36,33 +36,26 @@ func newTestStore(t *testing.T) *Store {
 
 func TestInit(t *testing.T) {
 	dir := t.TempDir()
+	orig := os.Getenv("HOME")
+	os.Setenv("HOME", dir)
+	defer os.Setenv("HOME", orig)
 
-	dirs := []string{
-		filepath.Join(dir, "contexts"),
-		filepath.Join(dir, "lists"),
-	}
-	for _, d := range dirs {
-		if err := os.MkdirAll(d, 0755); err != nil {
-			t.Fatalf("creating dir: %v", err)
-		}
-	}
-
-	repo, err := initGitRepo(dir)
+	s, err := Init()
 	if err != nil {
-		t.Fatalf("initGitRepo: %v", err)
+		t.Fatalf("Init: %v", err)
 	}
-
-	s := &Store{path: dir, repo: repo}
-
-	// Verify dirs exist
-	for _, d := range dirs {
-		if _, err := os.Stat(d); err != nil {
-			t.Errorf("dir %s not found: %v", d, err)
-		}
+	if s == nil {
+		t.Fatal("Init returned nil store")
 	}
-	// Verify git repo initialized
 	if s.repo == nil {
-		t.Error("repo is nil")
+		t.Error("Init returned store with nil repo")
+	}
+
+	storePath := filepath.Join(dir, ".bliss2")
+	for _, sub := range []string{"contexts", "lists", "todos"} {
+		if _, err := os.Stat(filepath.Join(storePath, sub)); err != nil {
+			t.Errorf("dir %q not created: %v", sub, err)
+		}
 	}
 }
 
