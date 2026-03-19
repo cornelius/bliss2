@@ -316,3 +316,20 @@ func TestReadContextMeta_noPath(t *testing.T) {
 		t.Errorf("path = %q, want empty", path)
 	}
 }
+
+func TestFindTodo_personal(t *testing.T) {
+	s := newTestStore(t)
+
+	t1 := todo.Todo{UUID: "find-personal-1", Title: "Personal item"}
+	if err := s.WriteTodo("", t1); err != nil {
+		t.Fatalf("WriteTodo personal: %v", err)
+	}
+
+	got, err := s.FindTodo(t1.UUID)
+	if err != nil {
+		t.Fatalf("FindTodo: %v", err)
+	}
+	if got.Title != t1.Title {
+		t.Errorf("Title = %q, want %q", got.Title, t1.Title)
+	}
+}
