@@ -13,7 +13,7 @@ Sync between machines is handled by git remotes in the usual way.
 All data lives in a single directory in the user's home:
 
 ```
-~/.bliss/
+~/.bliss2/
   contexts/
     <context-uuid>/
       meta.md
@@ -168,4 +168,4 @@ Marking a todo as done by setting a flag in the file would leave done todos in t
 
 ### UUIDs never shown to users
 
-UUIDs are an implementation detail for stable cross-context references. Exposing them would add cognitive load with no benefit. The CLI always translates to human-readable names and titles. Interaction with specific todos happens through selection in interactive mode, not by typing identifiers.
+UUIDs are an implementation detail for stable cross-context references. The CLI never displays them — todos are always identified by title and position number. UUIDs can be supplied as input to `bliss done` and `bliss move` as a power-user escape hatch (e.g. for scripting), but this is not the primary interaction model.
