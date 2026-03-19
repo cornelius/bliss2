@@ -161,7 +161,7 @@ func addCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&listName, "list", "", "Add to a named list")
+	cmd.Flags().StringVarP(&listName, "list", "l", "", "Add to a named list")
 	cmd.Flags().BoolVar(&urgent, "urgent", false, "Prepend to list (requires --list)")
 	return cmd
 }
