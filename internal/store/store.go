@@ -37,7 +37,7 @@ func Open() (*Store, error) {
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("store not found — run 'bliss init' to get started")
+		return Init()
 	}
 
 	repo, err := git.PlainOpen(path)

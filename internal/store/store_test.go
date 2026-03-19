@@ -254,3 +254,31 @@ func TestRemoveFromAllLists_personal(t *testing.T) {
 		}
 	}
 }
+
+func TestOpen_autoInit(t *testing.T) {
+	// Point HOME at an empty temp dir — store doesn't exist yet.
+	dir := t.TempDir()
+	orig := os.Getenv("HOME")
+	os.Setenv("HOME", dir)
+	defer os.Setenv("HOME", orig)
+
+	s, err := Open()
+	if err != nil {
+		t.Fatalf("Open on fresh HOME: %v", err)
+	}
+	if s == nil {
+		t.Fatal("got nil store")
+	}
+
+	// Store directory must now exist.
+	storePath := filepath.Join(dir, ".bliss2")
+	if _, err := os.Stat(storePath); err != nil {
+		t.Errorf("store dir not created: %v", err)
+	}
+
+	// Verify todos/ dir exists to confirm Init() was called.
+	todosDir := filepath.Join(storePath, "todos")
+	if _, err := os.Stat(todosDir); err != nil {
+		t.Errorf("todos dir not created by Init: %v", err)
+	}
+}
