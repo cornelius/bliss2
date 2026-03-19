@@ -1,5 +1,5 @@
-// Package store provides access to the bliss store at ~/.bliss/.
-// It encapsulates all path construction, file I/O, and git operations.
+// Package store is the single owner of all store I/O and git operations.
+// No other package constructs store paths or reads/writes store files.
 package store
 
 import (
@@ -17,13 +17,11 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-// Store wraps the ~/.bliss/ path and git repository.
 type Store struct {
 	path string
 	repo *git.Repository
 }
 
-// storePath returns the default store path (~/.bliss/).
 func storePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -32,7 +30,6 @@ func storePath() (string, error) {
 	return filepath.Join(home, ".bliss2"), nil
 }
 
-// Open opens an existing store at ~/.bliss/.
 func Open() (*Store, error) {
 	path, err := storePath()
 	if err != nil {
@@ -47,14 +44,12 @@ func Open() (*Store, error) {
 	return &Store{path: path, repo: repo}, nil
 }
 
-// Init initializes the store at ~/.bliss/, creating directories and git repo if needed.
 func Init() (*Store, error) {
 	path, err := storePath()
 	if err != nil {
 		return nil, err
 	}
 
-	// Create main directories
 	dirs := []string{
 		filepath.Join(path, "contexts"),
 		filepath.Join(path, "lists"),
@@ -65,7 +60,6 @@ func Init() (*Store, error) {
 		}
 	}
 
-	// Init or open git repo
 	repo, err := initGitRepo(path)
 	if err != nil {
 		return nil, err
@@ -74,7 +68,6 @@ func Init() (*Store, error) {
 	return &Store{path: path, repo: repo}, nil
 }
 
-// initGitRepo opens an existing git repo or initializes a new one at the given path.
 func initGitRepo(path string) (*git.Repository, error) {
 	repo, err := git.PlainOpen(path)
 	if err != nil {
@@ -86,27 +79,22 @@ func initGitRepo(path string) (*git.Repository, error) {
 	return repo, nil
 }
 
-// ContextDir returns the path to a context directory.
 func (s *Store) ContextDir(uuid string) string {
 	return filepath.Join(s.path, "contexts", uuid)
 }
 
-// TodosDir returns the path to the todos directory for a context.
 func (s *Store) TodosDir(uuid string) string {
 	return filepath.Join(s.path, "contexts", uuid, "todos")
 }
 
-// ContextListsDir returns the path to the lists directory for a context.
 func (s *Store) ContextListsDir(uuid string) string {
 	return filepath.Join(s.path, "contexts", uuid, "lists")
 }
 
-// PersonalListsDir returns the path to the personal lists directory.
 func (s *Store) PersonalListsDir() string {
 	return filepath.Join(s.path, "lists")
 }
 
-// WriteContextMeta writes the meta.md file for a context.
 func (s *Store) WriteContextMeta(uuid, name string) error {
 	dir := s.ContextDir(uuid)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -124,7 +112,6 @@ func (s *Store) WriteContextMeta(uuid, name string) error {
 	return os.WriteFile(metaPath, []byte(content), 0644)
 }
 
-// WriteTodo writes a todo file to the store.
 func (s *Store) WriteTodo(contextUUID string, t todo.Todo) error {
 	todosDir := s.TodosDir(contextUUID)
 	if err := os.MkdirAll(todosDir, 0755); err != nil {
@@ -134,7 +121,6 @@ func (s *Store) WriteTodo(contextUUID string, t todo.Todo) error {
 	return os.WriteFile(filePath, []byte(todo.Format(t)), 0644)
 }
 
-// ReadTodo reads a todo file from the store.
 func (s *Store) ReadTodo(contextUUID, todoUUID string) (todo.Todo, error) {
 	filePath := filepath.Join(s.TodosDir(contextUUID), todoUUID+".md")
 	data, err := os.ReadFile(filePath)
@@ -149,7 +135,6 @@ func (s *Store) ReadTodo(contextUUID, todoUUID string) (todo.Todo, error) {
 	return t, nil
 }
 
-// DeleteTodo deletes a todo file from the store.
 func (s *Store) DeleteTodo(contextUUID, todoUUID string) error {
 	filePath := filepath.Join(s.TodosDir(contextUUID), todoUUID+".md")
 	if err := os.Remove(filePath); err != nil {
@@ -158,7 +143,7 @@ func (s *Store) DeleteTodo(contextUUID, todoUUID string) error {
 	return nil
 }
 
-// ListTodos returns all todos in a context, with git creation times where available.
+// ListTodos returns todos sorted by creation time (oldest first), derived from git history.
 func (s *Store) ListTodos(contextUUID string) ([]todo.Todo, error) {
 	todosDir := s.TodosDir(contextUUID)
 	entries, err := os.ReadDir(todosDir)
@@ -184,7 +169,6 @@ func (s *Store) ListTodos(contextUUID string) ([]todo.Todo, error) {
 		if ct, ok := creationTimes[uuid]; ok {
 			t.CreatedAt = ct
 		} else {
-			// Fall back to file modification time
 			info, err := entry.Info()
 			if err == nil {
 				t.CreatedAt = info.ModTime()
@@ -193,7 +177,6 @@ func (s *Store) ListTodos(contextUUID string) ([]todo.Todo, error) {
 		todos = append(todos, t)
 	}
 
-	// Sort by creation time (oldest first)
 	sort.Slice(todos, func(i, j int) bool {
 		return todos[i].CreatedAt.Before(todos[j].CreatedAt)
 	})
@@ -201,14 +184,11 @@ func (s *Store) ListTodos(contextUUID string) ([]todo.Todo, error) {
 	return todos, nil
 }
 
-// getCreationTimes returns a map of todo UUID -> creation time from git history.
+// getCreationTimes walks git history to find the earliest commit touching each todo file.
 func (s *Store) getCreationTimes(contextUUID string) map[string]time.Time {
 	result := make(map[string]time.Time)
 
-	logOptions := &git.LogOptions{
-		Order: git.LogOrderCommitterTime,
-	}
-	iter, err := s.repo.Log(logOptions)
+	iter, err := s.repo.Log(&git.LogOptions{Order: git.LogOrderCommitterTime})
 	if err != nil {
 		return result
 	}
@@ -216,30 +196,26 @@ func (s *Store) getCreationTimes(contextUUID string) map[string]time.Time {
 
 	prefix := filepath.Join("contexts", contextUUID, "todos") + string(filepath.Separator)
 
-	err = iter.ForEach(func(c *object.Commit) error {
+	iter.ForEach(func(c *object.Commit) error {
 		files, err := c.Files()
 		if err != nil {
 			return nil
 		}
 		files.ForEach(func(f *object.File) error {
 			if strings.HasPrefix(f.Name, prefix) {
-				name := filepath.Base(f.Name)
-				uuid := strings.TrimSuffix(name, ".md")
-				// Only record the first (most recent) time we see it, which is actually
-				// the latest commit. We want the oldest commit, so we keep overwriting.
+				uuid := strings.TrimSuffix(filepath.Base(f.Name), ".md")
+				// Iterating newest-first; keep overwriting to end up with the oldest commit.
 				result[uuid] = c.Author.When
 			}
 			return nil
 		})
 		return nil
 	})
-	_ = err
 
 	return result
 }
 
-// WriteList writes a list file to the store.
-// If contextUUID is empty, it writes to the personal lists directory.
+// WriteList writes to the context lists dir, or personal lists dir when contextUUID is empty.
 func (s *Store) WriteList(contextUUID, listName string, l list.List) error {
 	var listsDir string
 	if contextUUID == "" {
@@ -254,8 +230,8 @@ func (s *Store) WriteList(contextUUID, listName string, l list.List) error {
 	return os.WriteFile(filePath, []byte(list.Format(l)), 0644)
 }
 
-// ReadList reads a list file from the store.
-// If contextUUID is empty, it reads from the personal lists directory.
+// ReadList reads from the context lists dir, or personal lists dir when contextUUID is empty.
+// Returns an empty list if the file does not exist.
 func (s *Store) ReadList(contextUUID, listName string) (list.List, error) {
 	var listsDir string
 	if contextUUID == "" {
@@ -267,7 +243,6 @@ func (s *Store) ReadList(contextUUID, listName string) (list.List, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Return empty list
 			return list.List{Sections: []list.Section{{}}}, nil
 		}
 		return list.List{}, fmt.Errorf("reading list %s: %w", listName, err)
@@ -275,13 +250,10 @@ func (s *Store) ReadList(contextUUID, listName string) (list.List, error) {
 	return list.Parse(string(data))
 }
 
-// ListNames returns the names of list files in a context directory.
 func (s *Store) ListNames(contextUUID string) ([]string, error) {
-	listsDir := s.ContextListsDir(contextUUID)
-	return listNamesInDir(listsDir)
+	return listNamesInDir(s.ContextListsDir(contextUUID))
 }
 
-// PersonalListNames returns the names of personal list files.
 func (s *Store) PersonalListNames() ([]string, error) {
 	return listNamesInDir(s.PersonalListsDir())
 }
@@ -303,11 +275,9 @@ func listNamesInDir(dir string) ([]string, error) {
 	return names, nil
 }
 
-// WriteSession writes the session mapping to session.txt.
 func (s *Store) WriteSession(mapping map[int]string) error {
 	sessionPath := filepath.Join(s.path, "session.txt")
 	var sb strings.Builder
-	// Write in sorted order
 	keys := make([]int, 0, len(mapping))
 	for k := range mapping {
 		keys = append(keys, k)
@@ -319,7 +289,6 @@ func (s *Store) WriteSession(mapping map[int]string) error {
 	return os.WriteFile(sessionPath, []byte(sb.String()), 0644)
 }
 
-// ReadSession reads the session mapping from session.txt.
 func (s *Store) ReadSession() (map[int]string, error) {
 	sessionPath := filepath.Join(s.path, "session.txt")
 	data, err := os.ReadFile(sessionPath)
@@ -349,8 +318,7 @@ func (s *Store) ReadSession() (map[int]string, error) {
 	return mapping, nil
 }
 
-// RemoveFromList removes a UUID from a named list in the store.
-// If contextUUID is empty, it operates on the personal lists directory.
+// RemoveFromList operates on the personal lists dir when contextUUID is empty.
 func (s *Store) RemoveFromList(contextUUID, listName, uuid string) error {
 	l, err := s.ReadList(contextUUID, listName)
 	if err != nil {
@@ -360,7 +328,6 @@ func (s *Store) RemoveFromList(contextUUID, listName, uuid string) error {
 	return s.WriteList(contextUUID, listName, l)
 }
 
-// RemoveFromAllLists removes a UUID from all list files in a context.
 func (s *Store) RemoveFromAllLists(contextUUID, uuid string) error {
 	names, err := s.ListNames(contextUUID)
 	if err != nil {
@@ -374,7 +341,6 @@ func (s *Store) RemoveFromAllLists(contextUUID, uuid string) error {
 	return nil
 }
 
-// Commit stages all changes and creates a git commit.
 func (s *Store) Commit(message string) error {
 	wt, err := s.repo.Worktree()
 	if err != nil {
@@ -390,7 +356,6 @@ func (s *Store) Commit(message string) error {
 		return fmt.Errorf("getting status: %w", err)
 	}
 	if status.IsClean() {
-		// Nothing to commit
 		return nil
 	}
 
