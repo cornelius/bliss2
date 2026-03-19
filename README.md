@@ -68,6 +68,33 @@ Completing a todo should be fund and satisfying experience. Like taking a piece 
 
 It also should be possible to remove todos. Not sure if it matters to make a difference between completing and removing a todo. Maybe not. And removing a todo can also be satisfying.
 
+## Development
+
+**Prerequisites:** Go 1.21+
+
+```sh
+# Run tests
+go test ./...
+
+# Build
+go build -o bliss ./cmd/bliss
+
+# Install to $GOPATH/bin
+go install ./cmd/bliss
+```
+
+**Quick start:**
+
+```sh
+cd my-project
+bliss init
+bliss add "My first todo"
+bliss list
+bliss done 1
+```
+
+---
+
 ### Command line client
 
 - `bliss init` — initialize a directory as a todo context
