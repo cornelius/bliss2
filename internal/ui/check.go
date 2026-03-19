@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"bliss/internal/list"
 	"bliss/internal/store"
 	"bliss/internal/todo"
 	"fmt"
@@ -12,30 +13,36 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// CheckItem holds a todo to display in the check view.
+// CheckItem holds a row in the check view — a list header, section separator, or todo.
 type CheckItem struct {
-	SectionHeader string // non-empty if this is a section header row
-	Todo          *todo.Todo
+	IsSectionHeader bool   // true if this is a section separator row
+	IsListHeader    bool   // true if this is a list-name header row
+	SectionHeader   string // section name; empty for unnamed sections
+	SectionName     string // actual stored name (same as SectionHeader, kept for clarity)
+	SectionIdx      int    // index into the list's Sections slice
+	ListName        string // list this todo belongs to (used for section insertion)
+	ListContextUUID string // context UUID for that list (empty for personal lists)
+	Todo            *todo.Todo
 }
 
 // CheckModel is the bubbletea model for the check command.
 type CheckModel struct {
-	store       *store.Store
-	contextUUID string
-	items       []CheckItem
-	cursor      int
-	editing     bool
-	textInput   textinput.Model
-	dirty       bool
-	quitting    bool
-	err         error
+	store          *store.Store
+	contextUUID    string
+	listName       string // non-empty when viewing a single named list
+	items          []CheckItem
+	cursor         int
+	editing        bool // editing a todo title
+	editingSection bool // editing a section name
+	textInput      textinput.Model
+	dirty          bool
+	quitting       bool
+	err            error
 }
 
-// NewCheckModel creates a new CheckModel with the given todos.
-func NewCheckModel(s *store.Store, contextUUID string, items []CheckItem) CheckModel {
+// NewCheckModel creates a new CheckModel. listName is non-empty when viewing a single named list.
+func NewCheckModel(s *store.Store, contextUUID string, items []CheckItem, listName string) CheckModel {
 	ti := textinput.New()
-	ti.Placeholder = "Edit title..."
-	// Set cursor to first todo item
 	cursor := 0
 	for i, item := range items {
 		if item.Todo != nil {
@@ -46,6 +53,7 @@ func NewCheckModel(s *store.Store, contextUUID string, items []CheckItem) CheckM
 	return CheckModel{
 		store:       s,
 		contextUUID: contextUUID,
+		listName:    listName,
 		items:       items,
 		cursor:      cursor,
 		textInput:   ti,
@@ -57,6 +65,9 @@ func (m CheckModel) Init() tea.Cmd {
 }
 
 func (m CheckModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.editingSection {
+		return m.updateEditingSection(msg)
+	}
 	if m.editing {
 		return m.updateEditing(msg)
 	}
@@ -75,17 +86,39 @@ func (m CheckModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "up", "k":
-			m.cursor = m.prevTodo()
+			m.cursor = m.prevItem()
 
 		case "down", "j":
-			m.cursor = m.nextTodo()
+			m.cursor = m.nextItem()
 
 		case "enter":
-			if item := m.currentTodoItem(); item != nil {
+			if m.cursor < 0 || m.cursor >= len(m.items) {
+				break
+			}
+			item := &m.items[m.cursor]
+			if item.IsSectionHeader && m.listName != "" {
+				m.textInput.SetValue(item.SectionName)
+				m.textInput.Placeholder = "Section name..."
+				m.textInput.Focus()
+				m.editingSection = true
+				return m, textinput.Blink
+			}
+			if item.Todo != nil {
 				m.textInput.SetValue(item.Todo.Title)
+				m.textInput.Placeholder = "Edit title..."
 				m.textInput.Focus()
 				m.editing = true
 				return m, textinput.Blink
+			}
+
+		case "s":
+			if m.currentTodoItem() != nil {
+				newM, err := m.insertSection()
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				return newM, nil
 			}
 
 		case " ", "d":
@@ -100,7 +133,6 @@ func (m CheckModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.dirty = true
-				// Remove from items
 				newItems := make([]CheckItem, 0, len(m.items))
 				for _, it := range m.items {
 					if it.Todo == nil || it.Todo.UUID != uuid {
@@ -153,25 +185,181 @@ func (m CheckModel) updateEditing(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m CheckModel) updateEditingSection(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			name := strings.TrimSpace(m.textInput.Value())
+			m.textInput.Blur()
+			m.editingSection = false
+			item := &m.items[m.cursor]
+			newM, err := m.renameSection(item.SectionIdx, name)
+			if err != nil {
+				m.err = err
+				return m, nil
+			}
+			return newM, nil
+
+		case "esc":
+			m.textInput.Blur()
+			m.editingSection = false
+			return m, nil
+		}
+	}
+
+	var cmd tea.Cmd
+	m.textInput, cmd = m.textInput.Update(msg)
+	return m, cmd
+}
+
+// insertSection inserts an unnamed section separator after the current todo.
+func (m CheckModel) insertSection() (CheckModel, error) {
+	item := m.currentTodoItem()
+	if item == nil {
+		return m, nil
+	}
+
+	listName := m.listName
+	listCtx := m.contextUUID
+	if listName == "" {
+		listName = item.ListName
+		listCtx = item.ListContextUUID
+	}
+	if listName == "" {
+		return m, nil
+	}
+
+	uuid := item.Todo.UUID
+	l, err := m.store.ReadList(listCtx, listName)
+	if err != nil {
+		return m, err
+	}
+
+	inserted := false
+	newSectionIdx := 0
+	for si := range l.Sections {
+		for pi, id := range l.Sections[si].Items {
+			if id != uuid {
+				continue
+			}
+			before := append([]string(nil), l.Sections[si].Items[:pi+1]...)
+			after := append([]string(nil), l.Sections[si].Items[pi+1:]...)
+			l.Sections[si].Items = before
+			tail := append([]list.Section(nil), l.Sections[si+1:]...)
+			l.Sections = append(l.Sections[:si+1], append([]list.Section{{Items: after}}, tail...)...)
+			newSectionIdx = si + 1
+			inserted = true
+			break
+		}
+		if inserted {
+			break
+		}
+	}
+	if !inserted {
+		return m, nil
+	}
+
+	if err := m.store.WriteList(listCtx, listName, l); err != nil {
+		return m, err
+	}
+	m.dirty = true
+	prevCursor := m.cursor
+
+	if m.listName != "" {
+		m.items = itemsFromList(l, m.store, m.contextUUID)
+	} else {
+		newItem := CheckItem{IsSectionHeader: true, SectionIdx: newSectionIdx}
+		tail := append([]CheckItem(nil), m.items[prevCursor+1:]...)
+		m.items = append(m.items[:prevCursor+1], append([]CheckItem{newItem}, tail...)...)
+	}
+
+	m.cursor = prevCursor + 1
+	if m.cursor >= len(m.items) {
+		m.cursor = len(m.items) - 1
+	}
+	return m, nil
+}
+
+// renameSection updates the name of the section at sectionIdx.
+func (m CheckModel) renameSection(sectionIdx int, name string) (CheckModel, error) {
+	l, err := m.store.ReadList(m.contextUUID, m.listName)
+	if err != nil {
+		return m, err
+	}
+	if sectionIdx >= 0 && sectionIdx < len(l.Sections) {
+		l.Sections[sectionIdx].Name = name
+	}
+	if err := m.store.WriteList(m.contextUUID, m.listName, l); err != nil {
+		return m, err
+	}
+	m.dirty = true
+	m.items = itemsFromList(l, m.store, m.contextUUID)
+	if m.cursor >= len(m.items) {
+		m.cursor = len(m.items) - 1
+	}
+	return m, nil
+}
+
+// itemsFromList builds CheckItems from a list, preserving section separators.
+func itemsFromList(l list.List, s *store.Store, contextUUID string) []CheckItem {
+	var items []CheckItem
+	for si, section := range l.Sections {
+		if si > 0 {
+			items = append(items, CheckItem{
+				IsSectionHeader: true,
+				SectionHeader:   section.Name,
+				SectionName:     section.Name,
+				SectionIdx:      si,
+			})
+		}
+		for _, uuid := range section.Items {
+			t, err := s.ReadTodo(contextUUID, uuid)
+			if err != nil {
+				continue
+			}
+			tc := t
+			items = append(items, CheckItem{Todo: &tc})
+		}
+	}
+	return items
+}
+
 func (m CheckModel) View() string {
 	if m.quitting {
 		return ""
 	}
 
 	var sb strings.Builder
-	sb.WriteString(styleHeader.Render("bliss check") + styleMuted.Render("  ↑↓ navigate  enter edit  space/d complete  q quit") + "\n\n")
+	sb.WriteString(styleHeader.Render("bliss check") + styleMuted.Render("  ↑↓ navigate  enter edit  space/d complete  s section  q quit") + "\n\n")
 
 	if m.err != nil {
 		sb.WriteString(fmt.Sprintf("error: %v\n", m.err))
 	}
 
 	for i, item := range m.items {
-		if item.SectionHeader != "" {
+		if item.IsListHeader {
 			prefix := "\n"
 			if i == 0 {
 				prefix = ""
 			}
-			sb.WriteString(prefix + styleSectionHead.Render("["+item.SectionHeader+"]") + "\n")
+			sb.WriteString(prefix + styleListHeader.Render("["+item.SectionHeader+"]") + "\n")
+			continue
+		}
+		if item.IsSectionHeader {
+			if item.SectionHeader == "" {
+				if m.cursor == i {
+					sb.WriteString(styleCursor.Render("> ──") + "\n")
+				} else {
+					sb.WriteString(styleSectionHead.Render("  ──") + "\n")
+				}
+			} else if m.editingSection && i == m.cursor {
+				sb.WriteString(styleEditing.Render("> ") + m.textInput.View() + "\n")
+			} else if i == m.cursor {
+				sb.WriteString(styleCursor.Render("> ") + styleSectionHead.Render("── "+item.SectionHeader) + "\n")
+			} else {
+				sb.WriteString(styleSectionHead.Render("  ── "+item.SectionHeader) + "\n")
+			}
 			continue
 		}
 		if item.Todo == nil {
@@ -194,7 +382,7 @@ func (m CheckModel) View() string {
 	return sb.String()
 }
 
-// currentTodoItem returns the CheckItem at cursor if it's a todo (not header).
+// currentTodoItem returns the CheckItem at cursor if it's a todo.
 func (m *CheckModel) currentTodoItem() *CheckItem {
 	if m.cursor < 0 || m.cursor >= len(m.items) {
 		return nil
@@ -206,7 +394,7 @@ func (m *CheckModel) currentTodoItem() *CheckItem {
 	return item
 }
 
-// todoOnlyItems returns only the non-header items.
+// todoOnlyItems returns only the todo items.
 func (m CheckModel) todoOnlyItems() []CheckItem {
 	var result []CheckItem
 	for _, item := range m.items {
@@ -217,22 +405,18 @@ func (m CheckModel) todoOnlyItems() []CheckItem {
 	return result
 }
 
-// nextTodo returns the index of the next todo item (skipping headers).
-func (m CheckModel) nextTodo() int {
-	for i := m.cursor + 1; i < len(m.items); i++ {
-		if m.items[i].Todo != nil {
-			return i
-		}
+// nextItem returns the index of the next navigable item.
+func (m CheckModel) nextItem() int {
+	if m.cursor+1 < len(m.items) {
+		return m.cursor + 1
 	}
 	return m.cursor
 }
 
-// prevTodo returns the index of the previous todo item (skipping headers).
-func (m CheckModel) prevTodo() int {
-	for i := m.cursor - 1; i >= 0; i-- {
-		if m.items[i].Todo != nil {
-			return i
-		}
+// prevItem returns the index of the previous navigable item.
+func (m CheckModel) prevItem() int {
+	if m.cursor-1 >= 0 {
+		return m.cursor - 1
 	}
 	return m.cursor
 }

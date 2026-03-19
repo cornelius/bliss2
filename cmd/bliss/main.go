@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	styleListHeader = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	stylePos        = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleMuted      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleActive     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
+	styleListHeader  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	stylePos         = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	styleMuted       = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	styleActive      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
+	styleSectionHead = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 )
 
 func main() {
@@ -237,24 +238,34 @@ func listCmd() *cobra.Command {
 			}
 
 			first := true
-			printList := func(header string, uuids []string, resolve func(string) (todo.Todo, error)) {
+			printList := func(header string, l list.List, resolve func(string) (todo.Todo, error)) {
 				if !first {
 					fmt.Println()
 				}
 				first = false
 				fmt.Println(styleListHeader.Render("  " + header))
-				if len(uuids) == 0 {
-					fmt.Println(styleMuted.Render("    (no todos)"))
-					return
-				}
-				for _, uuid := range uuids {
-					t, err := resolve(uuid)
-					if err != nil {
-						continue
+				empty := true
+				for si, section := range l.Sections {
+					if si > 0 {
+						if section.Name != "" {
+							fmt.Println(styleSectionHead.Render("      ── " + section.Name))
+						} else {
+							fmt.Println(styleSectionHead.Render("      ──"))
+						}
 					}
-					fmt.Printf("  %s  %s\n", stylePos.Render(fmt.Sprintf("%2d", pos)), t.Title)
-					session[pos] = uuid
-					pos++
+					for _, uuid := range section.Items {
+						t, err := resolve(uuid)
+						if err != nil {
+							continue
+						}
+						fmt.Printf("  %s  %s\n", stylePos.Render(fmt.Sprintf("%2d", pos)), t.Title)
+						session[pos] = uuid
+						pos++
+						empty = false
+					}
+				}
+				if empty {
+					fmt.Println(styleMuted.Render("    (no todos)"))
 				}
 			}
 
@@ -262,23 +273,26 @@ func listCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			inboxUUIDs := make([]string, len(inboxTodos))
-			for i, t := range inboxTodos {
-				inboxUUIDs[i] = t.UUID
+
+			inboxList := func() list.List {
+				uuids := make([]string, len(inboxTodos))
+				for i, t := range inboxTodos {
+					uuids[i] = t.UUID
+				}
+				return list.List{Sections: []list.Section{{Items: uuids}}}
 			}
 
 			if filterList == "inbox" {
-				printList("inbox", inboxUUIDs, readTodo)
+				printList("inbox", inboxList(), readTodo)
 				return s.WriteSession(session)
 			}
 
 			if filterList != "" {
-				// Check context list first, then personal list.
 				l, err := s.ReadList(contextUUID, filterList)
 				if err != nil {
 					return fmt.Errorf("reading list %q: %w", filterList, err)
 				}
-				printList(filterList, list.AllUUIDs(l), readTodo)
+				printList(filterList, l, readTodo)
 				return s.WriteSession(session)
 			}
 
@@ -292,11 +306,10 @@ func listCmd() *cobra.Command {
 				if err != nil {
 					continue
 				}
-				uuids := list.AllUUIDs(l)
-				if len(uuids) == 0 {
+				if len(list.AllUUIDs(l)) == 0 {
 					continue
 				}
-				printList(name, uuids, readTodo)
+				printList(name, l, readTodo)
 			}
 			personalNames, err := s.PersonalListNames()
 			if err != nil {
@@ -307,14 +320,13 @@ func listCmd() *cobra.Command {
 				if err != nil {
 					continue
 				}
-				uuids := list.AllUUIDs(l)
-				if len(uuids) == 0 {
+				if len(list.AllUUIDs(l)) == 0 {
 					continue
 				}
-				printList(name, uuids, readTodoAny)
+				printList(name, l, readTodoAny)
 			}
 			if len(inboxTodos) > 0 {
-				printList("inbox", inboxUUIDs, readTodo)
+				printList("inbox", inboxList(), readTodo)
 			}
 
 			if pos == 1 {
@@ -474,7 +486,7 @@ func checkCmd() *cobra.Command {
 				return err
 			}
 
-			m := ui.NewCheckModel(s, contextUUID, items)
+			m := ui.NewCheckModel(s, contextUUID, items, filterList)
 			p := tea.NewProgram(m)
 			if _, err := p.Run(); err != nil {
 				return fmt.Errorf("running check UI: %w", err)
@@ -525,94 +537,98 @@ func groomCmd() *cobra.Command {
 func buildCheckItems(s *store.Store, contextUUID, filterList string) ([]ui.CheckItem, error) {
 	var items []ui.CheckItem
 
-	if filterList == "inbox" || filterList == "" {
-		if filterList == "inbox" {
-			todos, err := getInboxTodos(s, contextUUID)
-			if err != nil {
-				return nil, err
-			}
-			for i := range todos {
-				t := todos[i]
-				items = append(items, ui.CheckItem{Todo: &t})
-			}
-			return items, nil
+	if filterList == "inbox" {
+		todos, err := getInboxTodos(s, contextUUID)
+		if err != nil {
+			return nil, err
 		}
+		for i := range todos {
+			t := todos[i]
+			items = append(items, ui.CheckItem{Todo: &t})
+		}
+		return items, nil
+	}
 
-		// Context lists, then personal lists, then inbox.
-		listNames, err := s.ListNames(contextUUID)
-		if err != nil {
-			return nil, err
-		}
-		for _, name := range listNames {
-			l, err := s.ReadList(contextUUID, name)
-			if err != nil {
-				continue
-			}
-			uuids := list.AllUUIDs(l)
-			if len(uuids) == 0 {
-				continue
-			}
-			items = append(items, ui.CheckItem{SectionHeader: name})
-			for _, uuid := range uuids {
-				t, err := s.ReadTodo(contextUUID, uuid)
-				if err != nil {
-					continue
-				}
-				tc := t
-				items = append(items, ui.CheckItem{Todo: &tc})
-			}
-		}
-		personalNames, err := s.PersonalListNames()
-		if err != nil {
-			return nil, err
-		}
-		for _, name := range personalNames {
-			l, err := s.ReadList("", name)
-			if err != nil {
-				continue
-			}
-			uuids := list.AllUUIDs(l)
-			if len(uuids) == 0 {
-				continue
-			}
-			items = append(items, ui.CheckItem{SectionHeader: name})
-			for _, uuid := range uuids {
-				t, err := s.FindTodo(uuid)
-				if err != nil {
-					continue
-				}
-				tc := t
-				items = append(items, ui.CheckItem{Todo: &tc})
-			}
-		}
-
-		inboxTodos, err := getInboxTodos(s, contextUUID)
-		if err != nil {
-			return nil, err
-		}
-		if len(inboxTodos) > 0 {
-			items = append(items, ui.CheckItem{SectionHeader: "inbox"})
-			for i := range inboxTodos {
-				t := inboxTodos[i]
-				items = append(items, ui.CheckItem{Todo: &t})
-			}
-		}
-	} else {
+	if filterList != "" {
 		l, err := s.ReadList(contextUUID, filterList)
 		if err != nil {
 			return nil, fmt.Errorf("reading list %q: %w", filterList, err)
 		}
-		for _, uuid := range list.AllUUIDs(l) {
-			t, err := s.ReadTodo(contextUUID, uuid)
-			if err != nil {
-				continue
-			}
-			tc := t
-			items = append(items, ui.CheckItem{Todo: &tc})
+		resolve := func(uuid string) (todo.Todo, error) { return s.ReadTodo(contextUUID, uuid) }
+		return appendSectionItems(items, l, filterList, contextUUID, resolve), nil
+	}
+
+	// No filter: context lists, then personal lists, then inbox.
+	listNames, err := s.ListNames(contextUUID)
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range listNames {
+		l, err := s.ReadList(contextUUID, name)
+		if err != nil {
+			continue
+		}
+		if len(list.AllUUIDs(l)) == 0 {
+			continue
+		}
+		resolve := func(uuid string) (todo.Todo, error) { return s.ReadTodo(contextUUID, uuid) }
+		items = append(items, ui.CheckItem{SectionHeader: name, IsListHeader: true})
+		items = appendSectionItems(items, l, name, contextUUID, resolve)
+	}
+	personalNames, err := s.PersonalListNames()
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range personalNames {
+		l, err := s.ReadList("", name)
+		if err != nil {
+			continue
+		}
+		if len(list.AllUUIDs(l)) == 0 {
+			continue
+		}
+		resolve := func(uuid string) (todo.Todo, error) { return s.FindTodo(uuid) }
+		items = append(items, ui.CheckItem{SectionHeader: name, IsListHeader: true})
+		items = appendSectionItems(items, l, name, "", resolve)
+	}
+
+	inboxTodos, err := getInboxTodos(s, contextUUID)
+	if err != nil {
+		return nil, err
+	}
+	if len(inboxTodos) > 0 {
+		items = append(items, ui.CheckItem{SectionHeader: "inbox", IsListHeader: true})
+		for i := range inboxTodos {
+			t := inboxTodos[i]
+			items = append(items, ui.CheckItem{Todo: &t})
 		}
 	}
 
 	return items, nil
+}
+
+// appendSectionItems appends CheckItems for each section of a list, including section separators.
+// listName and listCtx are set on todo items so section insertion works from any view.
+func appendSectionItems(items []ui.CheckItem, l list.List, listName, listCtx string, resolve func(string) (todo.Todo, error)) []ui.CheckItem {
+	for si, section := range l.Sections {
+		if si > 0 {
+			items = append(items, ui.CheckItem{
+				IsSectionHeader: true,
+				SectionHeader:   section.Name,
+				SectionName:     section.Name,
+				SectionIdx:      si,
+			})
+		}
+		for _, uuid := range section.Items {
+			t, err := resolve(uuid)
+			if err != nil {
+				continue
+			}
+			tc := t
+			items = append(items, ui.CheckItem{Todo: &tc, ListName: listName, ListContextUUID: listCtx})
+		}
+	}
+	return items
 }
 
 // resolveTodo resolves a position number or UUID string to a todo UUID.
