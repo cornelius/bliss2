@@ -229,17 +229,10 @@ func (m GroomModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.completeTodo()
 
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		// Number key: jump to list (if no todo selected) or move todo to section
 		n := int(key[0]-'0') - 1
-		if m.currentTodo() == nil {
-			// Jump to list
-			if n < len(m.listOrder) {
-				m.listIdx = n
-				return m, loadListCmd(m.store, m.contextUUID, m.currentListName(), m.touched)
-			}
-		} else {
-			// Move todo to section N of current list
-			return m.moveTodoToCurrentListSection(n)
+		if n < len(m.listOrder) {
+			m.listIdx = n
+			return m, loadListCmd(m.store, m.contextUUID, m.currentListName(), m.touched)
 		}
 
 	default:
@@ -300,12 +293,9 @@ func (m GroomModel) moveTodoToList(listName string) (GroomModel, tea.Cmd) {
 	return m.moveTodoToListSection(listName, -1)
 }
 
-func (m GroomModel) moveTodoToCurrentListSection(sectionIdx int) (GroomModel, tea.Cmd) {
-	return m.moveTodoToListSection(m.currentListName(), sectionIdx)
-}
-
-// moveTodoToListSection moves the current todo to the specified list and section.
-// sectionIdx -1 means append to end.
+// moveTodoToListSection moves the current todo to the given list and section.
+// sectionIdx -1 appends to end. "incoming" is the virtual inbox: moving there
+// just removes from all named lists so the todo falls back into the inbox.
 func (m GroomModel) moveTodoToListSection(listName string, sectionIdx int) (GroomModel, tea.Cmd) {
 	t := m.currentTodo()
 	if t == nil {
@@ -313,30 +303,28 @@ func (m GroomModel) moveTodoToListSection(listName string, sectionIdx int) (Groo
 	}
 	uuid := t.UUID
 
-	// Remove from all current lists
 	if err := m.store.RemoveFromAllLists(m.contextUUID, uuid); err != nil {
 		m.err = err
 		return m, nil
 	}
 
-	// Add to target list
-	l, err := m.store.ReadList(m.contextUUID, listName)
-	if err != nil {
-		m.err = err
-		return m, nil
-	}
+	if listName != "incoming" {
+		l, err := m.store.ReadList(m.contextUUID, listName)
+		if err != nil {
+			m.err = err
+			return m, nil
+		}
 
-	if sectionIdx < 0 || sectionIdx >= len(l.Sections) {
-		// Append to end
-		list.Add(&l, uuid, false)
-	} else {
-		// Insert into specific section (append to that section)
-		l.Sections[sectionIdx].Items = append(l.Sections[sectionIdx].Items, uuid)
-	}
+		if sectionIdx < 0 || sectionIdx >= len(l.Sections) {
+			list.Add(&l, uuid, false)
+		} else {
+			l.Sections[sectionIdx].Items = append(l.Sections[sectionIdx].Items, uuid)
+		}
 
-	if err := m.store.WriteList(m.contextUUID, listName, l); err != nil {
-		m.err = err
-		return m, nil
+		if err := m.store.WriteList(m.contextUUID, listName, l); err != nil {
+			m.err = err
+			return m, nil
+		}
 	}
 
 	if err := m.store.Commit(fmt.Sprintf("move %s to %s", uuid, listName)); err != nil {
