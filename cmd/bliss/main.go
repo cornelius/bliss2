@@ -196,14 +196,21 @@ func listCmd() *cobra.Command {
 			session := make(map[int]string)
 			pos := 1
 
-			printList := func(header string, uuids []string) {
+			readTodo := func(uuid string) (todo.Todo, error) {
+				return s.ReadTodo(contextUUID, uuid)
+			}
+			readTodoAny := func(uuid string) (todo.Todo, error) {
+				return s.FindTodo(uuid)
+			}
+
+			printList := func(header string, uuids []string, resolve func(string) (todo.Todo, error)) {
 				fmt.Printf("[%s]\n", header)
 				if len(uuids) == 0 {
 					fmt.Println("  (no todos)")
 					return
 				}
 				for _, uuid := range uuids {
-					t, err := s.ReadTodo(contextUUID, uuid)
+					t, err := resolve(uuid)
 					if err != nil {
 						continue
 					}
@@ -223,20 +230,21 @@ func listCmd() *cobra.Command {
 			}
 
 			if filterList == "inbox" {
-				printList("inbox", inboxUUIDs)
+				printList("inbox", inboxUUIDs, readTodo)
 				return s.WriteSession(session)
 			}
 
 			if filterList != "" {
+				// Check context list first, then personal list.
 				l, err := s.ReadList(contextUUID, filterList)
 				if err != nil {
 					return fmt.Errorf("reading list %q: %w", filterList, err)
 				}
-				printList(filterList, list.AllUUIDs(l))
+				printList(filterList, list.AllUUIDs(l), readTodo)
 				return s.WriteSession(session)
 			}
 
-			// No filter: named lists first, inbox last.
+			// No filter: context lists, then personal lists, then inbox.
 			listNames, err := s.ListNames(contextUUID)
 			if err != nil {
 				return err
@@ -250,10 +258,25 @@ func listCmd() *cobra.Command {
 				if len(uuids) == 0 {
 					continue
 				}
-				printList(name, uuids)
+				printList(name, uuids, readTodo)
+			}
+			personalNames, err := s.PersonalListNames()
+			if err != nil {
+				return err
+			}
+			for _, name := range personalNames {
+				l, err := s.ReadList("", name)
+				if err != nil {
+					continue
+				}
+				uuids := list.AllUUIDs(l)
+				if len(uuids) == 0 {
+					continue
+				}
+				printList(name, uuids, readTodoAny)
 			}
 			if len(inboxTodos) > 0 {
-				printList("inbox", inboxUUIDs)
+				printList("inbox", inboxUUIDs, readTodo)
 			}
 
 			if pos == 1 {
@@ -422,12 +445,11 @@ func buildCheckItems(s *store.Store, contextUUID, filterList string) ([]ui.Check
 			return items, nil
 		}
 
-		// All lists, named first, inbox last
+		// Context lists, then personal lists, then inbox.
 		listNames, err := s.ListNames(contextUUID)
 		if err != nil {
 			return nil, err
 		}
-
 		for _, name := range listNames {
 			l, err := s.ReadList(contextUUID, name)
 			if err != nil {
@@ -440,6 +462,29 @@ func buildCheckItems(s *store.Store, contextUUID, filterList string) ([]ui.Check
 			items = append(items, ui.CheckItem{SectionHeader: name})
 			for _, uuid := range uuids {
 				t, err := s.ReadTodo(contextUUID, uuid)
+				if err != nil {
+					continue
+				}
+				tc := t
+				items = append(items, ui.CheckItem{Todo: &tc})
+			}
+		}
+		personalNames, err := s.PersonalListNames()
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range personalNames {
+			l, err := s.ReadList("", name)
+			if err != nil {
+				continue
+			}
+			uuids := list.AllUUIDs(l)
+			if len(uuids) == 0 {
+				continue
+			}
+			items = append(items, ui.CheckItem{SectionHeader: name})
+			for _, uuid := range uuids {
+				t, err := s.FindTodo(uuid)
 				if err != nil {
 					continue
 				}

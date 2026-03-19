@@ -102,7 +102,6 @@ func buildGroomItems(s *store.Store, contextUUID, listName string, touched map[s
 	var items []GroomItem
 
 	if listName == "inbox" {
-		// Inbox: todos not in any list
 		todos, err := s.ListTodos(contextUUID)
 		if err != nil {
 			return nil, err
@@ -121,7 +120,6 @@ func buildGroomItems(s *store.Store, contextUUID, listName string, touched map[s
 				listedUUIDs[uuid] = true
 			}
 		}
-
 		for i := range todos {
 			t := &todos[i]
 			if !listedUUIDs[t.UUID] && !touched[t.UUID] {
@@ -132,8 +130,23 @@ func buildGroomItems(s *store.Store, contextUUID, listName string, touched map[s
 		return items, nil
 	}
 
-	// Named list
-	l, err := s.ReadList(contextUUID, listName)
+	// Try context list first; fall back to personal list.
+	// Personal lists may reference todos from any context, so use FindTodo.
+	contextListNames, _ := s.ListNames(contextUUID)
+	isContextList := false
+	for _, name := range contextListNames {
+		if name == listName {
+			isContextList = true
+			break
+		}
+	}
+
+	var listContextUUID string
+	if isContextList {
+		listContextUUID = contextUUID
+	}
+
+	l, err := s.ReadList(listContextUUID, listName)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +163,12 @@ func buildGroomItems(s *store.Store, contextUUID, listName string, touched map[s
 			if touched[uuid] {
 				continue
 			}
-			t, err := s.ReadTodo(contextUUID, uuid)
+			var t todo.Todo
+			if isContextList {
+				t, err = s.ReadTodo(contextUUID, uuid)
+			} else {
+				t, err = s.FindTodo(uuid)
+			}
 			if err != nil {
 				continue
 			}

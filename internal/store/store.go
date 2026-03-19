@@ -152,6 +152,22 @@ func (s *Store) WriteTodo(contextUUID string, t todo.Todo) error {
 	return os.WriteFile(filePath, []byte(todo.Format(t)), 0644)
 }
 
+// FindTodo searches all contexts for a todo by UUID. Used when reading personal
+// lists, which may reference todos from any context.
+func (s *Store) FindTodo(todoUUID string) (todo.Todo, error) {
+	uuids, err := s.ListContextUUIDs()
+	if err != nil {
+		return todo.Todo{}, err
+	}
+	for _, contextUUID := range uuids {
+		t, err := s.ReadTodo(contextUUID, todoUUID)
+		if err == nil {
+			return t, nil
+		}
+	}
+	return todo.Todo{}, fmt.Errorf("todo %s not found in any context", todoUUID)
+}
+
 func (s *Store) ReadTodo(contextUUID, todoUUID string) (todo.Todo, error) {
 	filePath := filepath.Join(s.TodosDir(contextUUID), todoUUID+".md")
 	data, err := os.ReadFile(filePath)
