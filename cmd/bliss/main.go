@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -237,10 +236,15 @@ func listCmd() *cobra.Command {
 				return s.FindTodo(uuid)
 			}
 
+			first := true
 			printList := func(header string, uuids []string, resolve func(string) (todo.Todo, error)) {
-				fmt.Println(styleListHeader.Render("[" + header + "]"))
+				if !first {
+					fmt.Println()
+				}
+				first = false
+				fmt.Println(styleListHeader.Render("  " + header))
 				if len(uuids) == 0 {
-					fmt.Println(styleMuted.Render("  (no todos)"))
+					fmt.Println(styleMuted.Render("    (no todos)"))
 					return
 				}
 				for _, uuid := range uuids {
@@ -248,7 +252,7 @@ func listCmd() *cobra.Command {
 					if err != nil {
 						continue
 					}
-					fmt.Printf("  %s %s\n", stylePos.Render(fmt.Sprintf("%d.", pos)), t.Title)
+					fmt.Printf("  %s  %s\n", stylePos.Render(fmt.Sprintf("%2d", pos)), t.Title)
 					session[pos] = uuid
 					pos++
 				}
@@ -696,11 +700,11 @@ func contextsCmd() *cobra.Command {
 					todos = nil
 				}
 
-				count := styleMuted.Render(fmt.Sprintf("%d todos", len(todos)))
+				count := styleMuted.Render(fmt.Sprintf("%d", len(todos)))
 				if uuid == activeUUID {
-					fmt.Printf("%s %s\n", styleActive.Render("* "+name), count)
+					fmt.Printf("  %s  %s\n", styleActive.Render("* "+name), count)
 				} else {
-					fmt.Printf("  %-30s %s\n", name, count)
+					fmt.Printf("    %-28s%s\n", name, count)
 				}
 			}
 			return nil
@@ -745,7 +749,7 @@ func historyCmd() *cobra.Command {
 
 			for _, e := range entries {
 				msg := strings.TrimPrefix(strings.TrimSpace(e.Message), "bliss: ")
-				fmt.Printf("%s  %s\n", styleMuted.Render(e.Time.Format(time.DateTime)), msg)
+				fmt.Printf("  %s  %s\n", styleMuted.Render(e.Time.Format("Jan 02 15:04")), msg)
 			}
 			return nil
 		},
