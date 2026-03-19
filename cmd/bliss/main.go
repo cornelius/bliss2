@@ -292,15 +292,10 @@ func listCmd() *cobra.Command {
 // doneCmd implements `bliss done <number>`
 func doneCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "done <number>",
-		Short: "Complete a todo by its position number",
+		Use:   "done <number|uuid>",
+		Short: "Complete a todo by position number or UUID",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			n, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid number: %s", args[0])
-			}
-
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("getting current directory: %w", err)
@@ -316,14 +311,9 @@ func doneCmd() *cobra.Command {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			session, err := s.ReadSession()
+			todoUUID, err := resolveTodo(args[0], s, contextUUID)
 			if err != nil {
 				return err
-			}
-
-			todoUUID, ok := session[n]
-			if !ok {
-				return fmt.Errorf("no todo at position %d (run 'bliss list' to refresh)", n)
 			}
 
 			// Read title for confirmation message
@@ -355,20 +345,12 @@ func moveCmd() *cobra.Command {
 	var urgent bool
 
 	cmd := &cobra.Command{
-		Use:   "move <number> --list <name>",
+		Use:   "move <number|uuid> --list <name>",
 		Short: "Move a todo to a list",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if listName == "" {
 				return fmt.Errorf("--list is required")
-			}
-			if urgent && listName == "" {
-				return fmt.Errorf("--urgent requires --list")
-			}
-
-			n, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid number: %s", args[0])
 			}
 
 			cwd, err := os.Getwd()
@@ -386,14 +368,9 @@ func moveCmd() *cobra.Command {
 				return err
 			}
 
-			session, err := s.ReadSession()
+			todoUUID, err := resolveTodo(args[0], s, contextUUID)
 			if err != nil {
 				return err
-			}
-
-			todoUUID, ok := session[n]
-			if !ok {
-				return fmt.Errorf("no todo at position %d (run 'bliss list' to refresh)", n)
 			}
 
 			t, err := s.ReadTodo(contextUUID, todoUUID)
@@ -599,6 +576,26 @@ func buildCheckItems(s *store.Store, contextUUID, filterList string) ([]ui.Check
 	}
 
 	return items, nil
+}
+
+// resolveTodo resolves a position number or UUID string to a todo UUID.
+func resolveTodo(arg string, s *store.Store, contextUUID string) (string, error) {
+	if _, err := uuid.Parse(arg); err == nil {
+		return arg, nil
+	}
+	n, err := strconv.Atoi(arg)
+	if err != nil {
+		return "", fmt.Errorf("expected a position number or UUID, got %q", arg)
+	}
+	session, err := s.ReadSession()
+	if err != nil {
+		return "", err
+	}
+	todoUUID, ok := session[n]
+	if !ok {
+		return "", fmt.Errorf("no todo at position %d (run 'bliss list' to refresh)", n)
+	}
+	return todoUUID, nil
 }
 
 // getInboxTodos returns todos that are not in any named list.
