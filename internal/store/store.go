@@ -29,7 +29,7 @@ func storePath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("finding home directory: %w", err)
 	}
-	return filepath.Join(home, ".bliss"), nil
+	return filepath.Join(home, ".bliss2"), nil
 }
 
 // Open opens an existing store at ~/.bliss/.
