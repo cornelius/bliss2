@@ -2,8 +2,8 @@
 
 ## General Principles
 
-- UUIDs are never shown to the user. Todos are always identified by title and position.
-- Every change to the store results in an immediate git commit.
+- UUIDs are never shown in output. Todos are always identified by title and position number.
+- Non-interactive commands commit immediately after each change. Interactive commands (`check`, `groom`) commit once when the session ends.
 - The current context is determined by walking up the directory tree from the working directory, using the first `.bliss-context` file found.
 - Commands are either strictly non-interactive or strictly interactive. No command switches between modes based on arguments or flags.
 
@@ -20,7 +20,7 @@ Non-interactive commands produce plain text output or perform a single action. T
 Initializes a context in the current directory.
 
 - Creates a `.bliss-context` marker file containing a new UUID.
-- Creates the corresponding context directory in `~/.bliss/contexts/<uuid>/`.
+- Creates the corresponding context directory in `~/.bliss2/contexts/<uuid>/`.
 - Derives the context name from the current directory name. Can be overridden with `--name <name>`.
 - If a `.bliss-context` file is found by walking up the directory tree, the user is informed that a parent context exists. A nested context is created regardless.
 
@@ -35,23 +35,23 @@ Captures a new todo in the current context.
 
 - The title is taken from command line arguments.
 - By default the todo lands in the inbox (not added to any list).
-- `--list <name>` adds the todo directly to a named list, appended to the end.
+- `--list/-l <name>` adds the todo directly to a named list, appended to the end.
 - `--urgent` places the todo at the top of the target list. Only valid in combination with `--list`.
 
 ```
 bliss add Feed the penguins
-bliss add Feed the penguins --list today
-bliss add Feed the penguins --list today --urgent
+bliss add Feed the penguins -l today
+bliss add Feed the penguins -l today --urgent
 ```
 
 #### `bliss list [list-name]`
 
 Displays todos in the current context with position numbers.
 
-- Without arguments: shows all todos, named lists first (in default order), inbox last.
+- Without arguments: shows context lists first, then personal lists, then inbox.
 - With a list name: shows only that list.
 - `inbox` is a valid list name and shows floating todos not in any named list.
-- Writes a session mapping (`~/.bliss/session.txt`) of position numbers to UUIDs. This mapping is the basis for `bliss done <number>`.
+- Writes a session mapping (`~/.bliss2/session.txt`) of position numbers to UUIDs. This mapping is the basis for `bliss done` and `bliss move`.
 
 ```
 bliss list
@@ -59,29 +59,68 @@ bliss list today
 bliss list inbox
 ```
 
-#### `bliss done <number>`
+#### `bliss done <number|uuid>`
 
-Completes (deletes) the todo at the given position number.
+Completes (deletes) the todo at the given position number, or by UUID.
 
 - Position numbers come from the last `bliss list` output.
-- Errors if no session mapping exists (i.e. `bliss list` has not been run yet).
+- A UUID can be given directly instead of a position number, bypassing the session.
+- Errors if a position number is given but no session mapping exists (i.e. `bliss list` has not been run yet).
 - Removes the todo file and any references to it in list files.
 
 ```
 bliss done 3
+bliss done 7f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+```
+
+#### `bliss move <number|uuid> --list <name>`
+
+Moves a todo to a named list.
+
+- Accepts a position number from the last `bliss list` output, or a UUID directly.
+- `--list/-l <name>` is required.
+- `--urgent` places the todo at the top of the target list.
+- Removes the todo from any list it currently appears in.
+
+```
+bliss move 3 -l today
+bliss move 3 -l today --urgent
+```
+
+#### `bliss contexts`
+
+Lists all contexts in the store.
+
+- Marks the active context (resolved from the current directory).
+- Shows the todo count for each context.
+
+```
+bliss contexts
+```
+
+#### `bliss history [--all]`
+
+Shows the change history for the current context.
+
+- Without flags: shows git log entries that touch the current context.
+- `--all` shows the full store history across all contexts.
+
+```
+bliss history
+bliss history --all
 ```
 
 ---
 
 ### Interactive Commands
 
-Interactive commands take over the terminal and allow navigation and action via keyboard. They never print plain text output.
+Interactive commands take over the terminal and allow navigation and action via keyboard. They never print plain text output. Changes are committed as a single git commit when the session ends.
 
 #### `bliss check [list-name]`
 
 Interactive view of a single list for navigating and completing todos.
 
-- Without arguments: shows all todos in the current context (named lists first, inbox last).
+- Without arguments: shows all todos in the current context (context lists first, personal lists, inbox last).
 - With a list name: shows only that list.
 - Does not support multi-list switching or touched state — use `bliss groom` for that.
 
@@ -120,11 +159,10 @@ The default personal Kanban lists are shown in this order:
 
 - Arrow keys to move between todos.
 - Tab / Shift-Tab to switch to the next / previous list.
-- Number keys to jump directly to a list (1–5 for the default lists).
+- Number keys (1–5) to jump directly to a list.
 
 ##### Acting on a Todo
 
-- A number key moves the selected todo to the corresponding **section** of the current list.
 - A list key (e.g. `t` for today, `w` for this week) moves the todo to the end of that list.
 - A list key followed by a number moves the todo to the specified section of that list.
 - `d` or `space` completes (deletes) the todo.
@@ -148,7 +186,11 @@ An earlier design had `bliss list` default to interactive mode with a `--no-inte
 
 ### `bliss list` and session mapping
 
-`bliss done <number>` needs stable position numbers between the `bliss list` call and the `bliss done` call. The session mapping file (`~/.bliss/session.txt`) records the UUID at each position as shown by the last `bliss list`. This mapping is replaced on every `bliss list` call. `bliss done` without a prior `bliss list` errors rather than guessing.
+`bliss done <number>` and `bliss move <number>` need stable position numbers between the `bliss list` call and the action. The session mapping file (`~/.bliss2/session.txt`) records the UUID at each position as shown by the last `bliss list`. This mapping is replaced on every `bliss list` call. Both commands also accept a UUID directly, which bypasses the session entirely and is more robust for scripting.
+
+### Interactive commands commit on quit
+
+Each action in `bliss check` or `bliss groom` writes to disk immediately so that a crash does not lose work. The git commit is deferred to when the session ends with `q`, producing a single commit per session rather than one per action. This keeps the git history meaningful.
 
 ### `bliss check` vs `bliss groom`
 
