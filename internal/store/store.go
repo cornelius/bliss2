@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -482,4 +483,63 @@ func (s *Store) ReadHistory(contextUUID string) ([]HistoryEntry, error) {
 	}
 
 	return entries, nil
+}
+
+// GitSyncStatus returns the remote name and how many commits the local branch
+// is ahead of and behind its remote tracking branch.
+// Returns ("", 0, 0, nil) if the store has no remote configured.
+func (s *Store) GitSyncStatus() (remote string, ahead, behind int, err error) {
+	remotes, err := s.repo.Remotes()
+	if err != nil || len(remotes) == 0 {
+		return "", 0, 0, nil
+	}
+	remote = remotes[0].Config().Name
+
+	headRef, err := s.repo.Head()
+	if err != nil {
+		return remote, 0, 0, nil
+	}
+
+	remoteRefName := plumbing.NewRemoteReferenceName(remote, headRef.Name().Short())
+	remoteRef, err := s.repo.Reference(remoteRefName, true)
+	if err != nil {
+		// Remote ref doesn't exist (never pushed).
+		return remote, 0, 0, nil
+	}
+
+	if headRef.Hash() == remoteRef.Hash() {
+		return remote, 0, 0, nil
+	}
+
+	// Walk local and remote histories to find divergence.
+	localSet := make(map[plumbing.Hash]bool)
+	localIter, err := s.repo.Log(&git.LogOptions{From: headRef.Hash()})
+	if err == nil {
+		localIter.ForEach(func(c *object.Commit) error {
+			localSet[c.Hash] = true
+			return nil
+		})
+	}
+
+	remoteSet := make(map[plumbing.Hash]bool)
+	remoteIter, err := s.repo.Log(&git.LogOptions{From: remoteRef.Hash()})
+	if err == nil {
+		remoteIter.ForEach(func(c *object.Commit) error {
+			remoteSet[c.Hash] = true
+			return nil
+		})
+	}
+
+	for h := range localSet {
+		if !remoteSet[h] {
+			ahead++
+		}
+	}
+	for h := range remoteSet {
+		if !localSet[h] {
+			behind++
+		}
+	}
+
+	return remote, ahead, behind, nil
 }

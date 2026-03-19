@@ -333,3 +333,18 @@ func TestFindTodo_personal(t *testing.T) {
 		t.Errorf("Title = %q, want %q", got.Title, t1.Title)
 	}
 }
+
+func TestGitSyncStatus_noRemote(t *testing.T) {
+	s := newTestStore(t)
+
+	remote, ahead, behind, err := s.GitSyncStatus()
+	if err != nil {
+		t.Fatalf("GitSyncStatus: %v", err)
+	}
+	if remote != "" {
+		t.Errorf("remote = %q, want empty", remote)
+	}
+	if ahead != 0 || behind != 0 {
+		t.Errorf("ahead=%d behind=%d, want 0 0", ahead, behind)
+	}
+}
