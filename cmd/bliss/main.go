@@ -36,6 +36,7 @@ func rootCmd() *cobra.Command {
 		addCmd(),
 		listCmd(),
 		doneCmd(),
+		moveCmd(),
 		checkCmd(),
 		groomCmd(),
 		contextsCmd(),
@@ -347,6 +348,84 @@ func doneCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func moveCmd() *cobra.Command {
+	var listName string
+	var urgent bool
+
+	cmd := &cobra.Command{
+		Use:   "move <number> --list <name>",
+		Short: "Move a todo to a list",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if listName == "" {
+				return fmt.Errorf("--list is required")
+			}
+			if urgent && listName == "" {
+				return fmt.Errorf("--urgent requires --list")
+			}
+
+			n, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid number: %s", args[0])
+			}
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current directory: %w", err)
+			}
+
+			contextUUID, _, err := blisscontext.FindContext(cwd)
+			if err != nil {
+				return err
+			}
+
+			s, err := store.Open()
+			if err != nil {
+				return err
+			}
+
+			session, err := s.ReadSession()
+			if err != nil {
+				return err
+			}
+
+			todoUUID, ok := session[n]
+			if !ok {
+				return fmt.Errorf("no todo at position %d (run 'bliss list' to refresh)", n)
+			}
+
+			t, err := s.ReadTodo(contextUUID, todoUUID)
+			if err != nil {
+				return fmt.Errorf("reading todo: %w", err)
+			}
+
+			if err := s.RemoveFromAllLists(contextUUID, todoUUID); err != nil {
+				return fmt.Errorf("removing from lists: %w", err)
+			}
+
+			l, err := s.ReadList(contextUUID, listName)
+			if err != nil {
+				return fmt.Errorf("reading list %q: %w", listName, err)
+			}
+			list.Add(&l, todoUUID, urgent)
+			if err := s.WriteList(contextUUID, listName, l); err != nil {
+				return fmt.Errorf("writing list: %w", err)
+			}
+
+			if err := s.Commit(fmt.Sprintf("move %q to %s", t.Title, listName)); err != nil {
+				return fmt.Errorf("committing: %w", err)
+			}
+
+			fmt.Printf("Moved to [%s]: %s\n", listName, t.Title)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&listName, "list", "l", "", "Target list")
+	cmd.Flags().BoolVar(&urgent, "urgent", false, "Place at top of list")
+	return cmd
 }
 
 // checkCmd implements `bliss check [list-name]`
