@@ -22,7 +22,9 @@ go build ./cmd/bliss
 
 Todos for this project are tracked in bliss itself. The store is at `~/.bliss2/`. The context is the repo root (`.bliss-context` file).
 
-Always run `./bliss list` first to get current position numbers before acting on any todo. Position numbers change between sessions. UUIDs are stable and can also be used with `bliss done` and `bliss move`.
+Always run `./bliss list` first to get current position numbers before acting on any todo. Position numbers are stable within a session — running `bliss done 5` does not shift position 6 to 5. The session mapping is only replaced when `bliss list` is run again. To act on multiple todos without re-listing, use each todo's original position number from the last `bliss list` output.
+
+UUIDs are stable across sessions and can also be used with `bliss done` and `bliss move`.
 
 Useful commands:
 ```sh

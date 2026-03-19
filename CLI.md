@@ -52,6 +52,7 @@ Displays todos in the current context with position numbers.
 - With a list name: shows only that list.
 - `inbox` is a valid list name and shows floating todos not in any named list.
 - Writes a session mapping (`~/.bliss2/session.txt`) of position numbers to UUIDs. This mapping is the basis for `bliss done` and `bliss move`.
+- Position numbers are **stable within a session**: completing todo 5 does not shift todo 6 to position 5. The session is replaced only when `bliss list` is run again. To complete multiple todos, use each one's original position number from the last `bliss list` output.
 
 ```
 bliss list
@@ -186,7 +187,7 @@ An earlier design had `bliss list` default to interactive mode with a `--no-inte
 
 ### `bliss list` and session mapping
 
-`bliss done <number>` and `bliss move <number>` need stable position numbers between the `bliss list` call and the action. The session mapping file (`~/.bliss2/session.txt`) records the UUID at each position as shown by the last `bliss list`. This mapping is replaced on every `bliss list` call. Both commands also accept a UUID directly, which bypasses the session entirely and is more robust for scripting.
+`bliss done <number>` and `bliss move <number>` need stable position numbers between the `bliss list` call and the action. The session mapping file (`~/.bliss2/session.txt`) records the UUID at each position as shown by the last `bliss list`. This mapping is replaced only when `bliss list` is called again — not after each `done` or `move`. This means you can complete todos 3, 5, and 7 in sequence using their original position numbers without re-listing. Both commands also accept a UUID directly, which bypasses the session entirely and is more robust for scripting.
 
 ### Interactive commands commit on quit
 
