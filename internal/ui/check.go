@@ -25,6 +25,7 @@ type CheckModel struct {
 	cursor      int
 	editing     bool
 	textInput   textinput.Model
+	dirty       bool
 	quitting    bool
 	err         error
 }
@@ -67,6 +68,9 @@ func (m CheckModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			m.quitting = true
+			if m.dirty {
+				_ = m.store.Commit("check session")
+			}
 			return m, tea.Quit
 
 		case "up", "k":
@@ -94,10 +98,7 @@ func (m CheckModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.err = err
 					return m, nil
 				}
-				if err := m.store.Commit(fmt.Sprintf("complete %s", uuid)); err != nil {
-					m.err = err
-					return m, nil
-				}
+				m.dirty = true
 				// Remove from items
 				newItems := make([]CheckItem, 0, len(m.items))
 				for _, it := range m.items {
@@ -131,7 +132,7 @@ func (m CheckModel) updateEditing(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err := m.store.WriteTodo(m.contextUUID, t); err != nil {
 						m.err = err
 					} else {
-						_ = m.store.Commit(fmt.Sprintf("edit %s", t.UUID))
+						m.dirty = true
 					}
 				}
 			}

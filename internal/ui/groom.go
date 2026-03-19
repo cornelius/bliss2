@@ -49,6 +49,7 @@ type GroomModel struct {
 	// pending list key for two-key sequences (e.g. "t3" = today section 3)
 	pendingListKey string
 
+	dirty    bool
 	quitting bool
 	err      error
 }
@@ -209,6 +210,9 @@ func (m GroomModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key {
 	case "q", "ctrl+c":
 		m.quitting = true
+		if m.dirty {
+			_ = m.store.Commit("groom session")
+		}
 		return m, tea.Quit
 
 	case "tab":
@@ -281,10 +285,7 @@ func (m GroomModel) completeTodo() (GroomModel, tea.Cmd) {
 		m.err = err
 		return m, nil
 	}
-	if err := m.store.Commit(fmt.Sprintf("complete %s", uuid)); err != nil {
-		m.err = err
-		return m, nil
-	}
+	m.dirty = true
 	m.touched[uuid] = true
 	return m, loadListCmd(m.store, m.contextUUID, m.currentListName(), m.touched)
 }
@@ -327,11 +328,7 @@ func (m GroomModel) moveTodoToListSection(listName string, sectionIdx int) (Groo
 		}
 	}
 
-	if err := m.store.Commit(fmt.Sprintf("move %s to %s", uuid, listName)); err != nil {
-		m.err = err
-		return m, nil
-	}
-
+	m.dirty = true
 	m.touched[uuid] = true
 	return m, loadListCmd(m.store, m.contextUUID, m.currentListName(), m.touched)
 }

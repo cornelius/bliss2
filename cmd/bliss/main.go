@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bliss/internal/list"
 	blisscontext "bliss/internal/context"
+	"bliss/internal/list"
 	"bliss/internal/store"
 	"bliss/internal/todo"
 	"bliss/internal/ui"
@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
@@ -37,6 +38,8 @@ func rootCmd() *cobra.Command {
 		doneCmd(),
 		checkCmd(),
 		groomCmd(),
+		contextsCmd(),
+		historyCmd(),
 	)
 
 	return root
@@ -193,67 +196,13 @@ func listCmd() *cobra.Command {
 			session := make(map[int]string)
 			pos := 1
 
-			if filterList == "inbox" || filterList == "" {
-				// Get inbox todos
-				inboxTodos, err := getInboxTodos(s, contextUUID)
-				if err != nil {
-					return err
+			printList := func(header string, uuids []string) {
+				fmt.Printf("[%s]\n", header)
+				if len(uuids) == 0 {
+					fmt.Println("  (no todos)")
+					return
 				}
-
-				if filterList == "inbox" {
-					fmt.Println("[inbox]")
-					for _, t := range inboxTodos {
-						fmt.Printf("  %d. %s\n", pos, t.Title)
-						session[pos] = t.UUID
-						pos++
-					}
-					return s.WriteSession(session)
-				}
-
-				// Show named lists first
-				listNames, err := s.ListNames(contextUUID)
-				if err != nil {
-					return err
-				}
-
-				for _, name := range listNames {
-					l, err := s.ReadList(contextUUID, name)
-					if err != nil {
-						continue
-					}
-					uuids := list.AllUUIDs(l)
-					if len(uuids) == 0 {
-						continue
-					}
-					fmt.Printf("[%s]\n", name)
-					for _, uuid := range uuids {
-						t, err := s.ReadTodo(contextUUID, uuid)
-						if err != nil {
-							continue
-						}
-						fmt.Printf("  %d. %s\n", pos, t.Title)
-						session[pos] = uuid
-						pos++
-					}
-				}
-
-				// Inbox last
-				if len(inboxTodos) > 0 {
-					fmt.Println("[inbox]")
-					for _, t := range inboxTodos {
-						fmt.Printf("  %d. %s\n", pos, t.Title)
-						session[pos] = t.UUID
-						pos++
-					}
-				}
-			} else {
-				// Specific named list
-				l, err := s.ReadList(contextUUID, filterList)
-				if err != nil {
-					return fmt.Errorf("reading list %q: %w", filterList, err)
-				}
-				fmt.Printf("[%s]\n", filterList)
-				for _, uuid := range list.AllUUIDs(l) {
+				for _, uuid := range uuids {
 					t, err := s.ReadTodo(contextUUID, uuid)
 					if err != nil {
 						continue
@@ -262,6 +211,53 @@ func listCmd() *cobra.Command {
 					session[pos] = uuid
 					pos++
 				}
+			}
+
+			inboxTodos, err := getInboxTodos(s, contextUUID)
+			if err != nil {
+				return err
+			}
+			inboxUUIDs := make([]string, len(inboxTodos))
+			for i, t := range inboxTodos {
+				inboxUUIDs[i] = t.UUID
+			}
+
+			if filterList == "inbox" {
+				printList("inbox", inboxUUIDs)
+				return s.WriteSession(session)
+			}
+
+			if filterList != "" {
+				l, err := s.ReadList(contextUUID, filterList)
+				if err != nil {
+					return fmt.Errorf("reading list %q: %w", filterList, err)
+				}
+				printList(filterList, list.AllUUIDs(l))
+				return s.WriteSession(session)
+			}
+
+			// No filter: named lists first, inbox last.
+			listNames, err := s.ListNames(contextUUID)
+			if err != nil {
+				return err
+			}
+			for _, name := range listNames {
+				l, err := s.ReadList(contextUUID, name)
+				if err != nil {
+					continue
+				}
+				uuids := list.AllUUIDs(l)
+				if len(uuids) == 0 {
+					continue
+				}
+				printList(name, uuids)
+			}
+			if len(inboxTodos) > 0 {
+				printList("inbox", inboxUUIDs)
+			}
+
+			if pos == 1 {
+				fmt.Println("(no todos)")
 			}
 
 			return s.WriteSession(session)
@@ -511,4 +507,95 @@ func getInboxTodos(s *store.Store, contextUUID string) ([]todo.Todo, error) {
 		}
 	}
 	return inbox, nil
+}
+
+func contextsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "contexts",
+		Short: "List all contexts",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := store.Open()
+			if err != nil {
+				return err
+			}
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current directory: %w", err)
+			}
+			activeUUID, _, _ := blisscontext.FindContext(cwd)
+
+			uuids, err := s.ListContextUUIDs()
+			if err != nil {
+				return err
+			}
+
+			for _, uuid := range uuids {
+				name, err := s.ReadContextMeta(uuid)
+				if err != nil {
+					name = uuid
+				}
+
+				todos, err := s.ListTodos(uuid)
+				if err != nil {
+					todos = nil
+				}
+
+				marker := "  "
+				if uuid == activeUUID {
+					marker = "* "
+				}
+				fmt.Printf("%s%-30s %d todos\n", marker, name, len(todos))
+			}
+			return nil
+		},
+	}
+}
+
+func historyCmd() *cobra.Command {
+	var all bool
+
+	cmd := &cobra.Command{
+		Use:   "history",
+		Short: "Show history of changes",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := store.Open()
+			if err != nil {
+				return err
+			}
+
+			contextUUID := ""
+			if !all {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("getting current directory: %w", err)
+				}
+				contextUUID, _, err = blisscontext.FindContext(cwd)
+				if err != nil {
+					return err
+				}
+			}
+
+			entries, err := s.ReadHistory(contextUUID)
+			if err != nil {
+				return err
+			}
+
+			if len(entries) == 0 {
+				fmt.Println("(no history)")
+				return nil
+			}
+
+			for _, e := range entries {
+				msg := strings.TrimPrefix(strings.TrimSpace(e.Message), "bliss: ")
+				fmt.Printf("%s  %s\n", e.Time.Format(time.DateTime), msg)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&all, "all", false, "Show history across all contexts")
+	return cmd
 }

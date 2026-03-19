@@ -36,6 +36,10 @@ func Open() (*Store, error) {
 		return nil, err
 	}
 
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, fmt.Errorf("store not found — run 'bliss init' to get started")
+	}
+
 	repo, err := git.PlainOpen(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening store git repo at %s: %w", path, err)
@@ -93,6 +97,33 @@ func (s *Store) ContextListsDir(uuid string) string {
 
 func (s *Store) PersonalListsDir() string {
 	return filepath.Join(s.path, "lists")
+}
+
+func (s *Store) ReadContextMeta(uuid string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.md"))
+	if err != nil {
+		return "", err
+	}
+	name := strings.TrimPrefix(strings.TrimSpace(string(data)), "# ")
+	return name, nil
+}
+
+// ListContextUUIDs returns the UUIDs of all contexts in the store.
+func (s *Store) ListContextUUIDs() ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(s.path, "contexts"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("reading contexts dir: %w", err)
+	}
+	var uuids []string
+	for _, e := range entries {
+		if e.IsDir() {
+			uuids = append(uuids, e.Name())
+		}
+	}
+	return uuids, nil
 }
 
 func (s *Store) WriteContextMeta(uuid, name string) error {
@@ -370,4 +401,48 @@ func (s *Store) Commit(message string) error {
 		return fmt.Errorf("committing: %w", err)
 	}
 	return nil
+}
+
+// HistoryEntry is one entry from the git log.
+type HistoryEntry struct {
+	Time    time.Time
+	Message string
+}
+
+// ReadHistory returns git log entries, optionally filtered to a single context.
+// If contextUUID is empty, all entries are returned.
+func (s *Store) ReadHistory(contextUUID string) ([]HistoryEntry, error) {
+	iter, err := s.repo.Log(&git.LogOptions{Order: git.LogOrderCommitterTime})
+	if err != nil {
+		return nil, fmt.Errorf("reading git log: %w", err)
+	}
+	defer iter.Close()
+
+	var entries []HistoryEntry
+	prefix := filepath.Join("contexts", contextUUID) + string(filepath.Separator)
+
+	err = iter.ForEach(func(c *object.Commit) error {
+		if contextUUID == "" {
+			entries = append(entries, HistoryEntry{Time: c.Author.When, Message: c.Message})
+			return nil
+		}
+		// Filter to commits touching this context's directory.
+		files, err := c.Files()
+		if err != nil {
+			return nil
+		}
+		return files.ForEach(func(f *object.File) error {
+			if strings.HasPrefix(f.Name, prefix) {
+				entries = append(entries, HistoryEntry{Time: c.Author.When, Message: c.Message})
+				return fmt.Errorf("stop") // sentinel to stop inner iteration
+			}
+			return nil
+		})
+	})
+	// Ignore the sentinel error used to break inner iteration.
+	if err != nil && err.Error() != "stop" {
+		return nil, err
+	}
+
+	return entries, nil
 }
