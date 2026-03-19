@@ -199,7 +199,9 @@ func addCmd() *cobra.Command {
 
 // listCmd implements `bliss list [list-name]`
 func listCmd() *cobra.Command {
-	return &cobra.Command{
+	var all bool
+
+	cmd := &cobra.Command{
 		Use:   "list [list-name]",
 		Short: "Show todos with position numbers",
 		Args:  cobra.MaximumNArgs(1),
@@ -214,6 +216,11 @@ func listCmd() *cobra.Command {
 			s, err := store.Open()
 			if err != nil {
 				return fmt.Errorf("opening store: %w", err)
+			}
+
+			// --all: show every context plus personal, no session.
+			if all {
+				return listAll(s)
 			}
 
 			var filterList string
@@ -330,6 +337,49 @@ func listCmd() *cobra.Command {
 			return s.WriteSession(session)
 		},
 	}
+
+	cmd.Flags().BoolVar(&all, "all", false, "Show todos from all contexts")
+	return cmd
+}
+
+// listAll shows todos from all contexts plus personal todos.
+func listAll(s *store.Store) error {
+	contextUUIDs, err := s.ListContextUUIDs()
+	if err != nil {
+		return err
+	}
+
+	first := true
+	printHeader := func(header string) {
+		if !first {
+			fmt.Println()
+		}
+		first = false
+		fmt.Println(styleListHeader.Render("  " + header))
+	}
+
+	for _, uuid := range contextUUIDs {
+		name, _, _ := s.ReadContextMeta(uuid)
+		todos, err := s.ListTodos(uuid)
+		if err != nil || len(todos) == 0 {
+			continue
+		}
+		printHeader(name)
+		for _, t := range todos {
+			fmt.Printf("    %s\n", t.Title)
+		}
+	}
+
+	// Personal todos.
+	personalTodos, err := s.ListTodos("")
+	if err == nil && len(personalTodos) > 0 {
+		printHeader("personal")
+		for _, t := range personalTodos {
+			fmt.Printf("    %s\n", t.Title)
+		}
+	}
+
+	return nil
 }
 
 // doneCmd implements `bliss done <number>`

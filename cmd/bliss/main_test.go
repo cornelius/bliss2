@@ -270,3 +270,30 @@ func TestPersonalMode_move(t *testing.T) {
 		t.Errorf("move output %q missing confirmation", out)
 	}
 }
+
+func TestList_all(t *testing.T) {
+	home, env := blissEnv(t)
+
+	// Create two project dirs with contexts.
+	proj1 := filepath.Join(home, "proj1")
+	proj2 := filepath.Join(home, "proj2")
+	os.MkdirAll(proj1, 0755)
+	os.MkdirAll(proj2, 0755)
+
+	bliss(t, proj1, env, "init", "--name", "Project One")
+	bliss(t, proj2, env, "init", "--name", "Project Two")
+	bliss(t, proj1, env, "add", "Todo in proj1")
+	bliss(t, proj2, env, "add", "Todo in proj2")
+
+	// Run --all from a neutral directory (home).
+	out, err := bliss(t, home, env, "list", "--all")
+	if err != nil {
+		t.Fatalf("list --all: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Todo in proj1") {
+		t.Errorf("output missing proj1 todo: %s", out)
+	}
+	if !strings.Contains(out, "Todo in proj2") {
+		t.Errorf("output missing proj2 todo: %s", out)
+	}
+}
