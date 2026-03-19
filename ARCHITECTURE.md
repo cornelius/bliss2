@@ -52,3 +52,47 @@ No other package constructs paths into the store or reads/writes store files dir
 - **Unit tests** for packages with well-defined logic (todo parsing, list parsing, context resolution). Minimal mocking — tests touch real files in temp directories where possible.
 - **Integration tests** that invoke the full CLI, set up test data, run sequences of commands, and assert on output and file state.
 - Coverage is focused on the parts most likely to break when things change, not on achieving a particular percentage.
+- **Never test manually.** If something needs verifying, write a test.
+
+## Session File
+
+`bliss list` writes a session file (`~/.bliss2/session.txt`) mapping position numbers to UUIDs. Position numbers shown in output are stable for the lifetime of that session — they do not change when todos are completed or moved. The session is only replaced when `bliss list` runs again.
+
+`bliss done N` and `bliss move N` resolve position numbers through the session file. Always run `bliss list` before `bliss done` or `bliss move` so positions are up to date.
+
+## Inbox
+
+The inbox is a virtual view, not a stored list. `getInboxTodos` returns all todos in the context that are not referenced by any named list. This means a todo is automatically "in the inbox" until it is added to a list.
+
+## Sections
+
+A list file contains one or more sections separated by `---` lines. Sections can have an optional name on the `---` line. The `list.List` type models this as `Sections []Section`.
+
+In output:
+- `bliss list` renders section separators as `      ──` (aligned with the todo title column).
+- `bliss check` renders unnamed separators as `  ──` and named ones as `  ── name`.
+
+## Interactive TUI
+
+The TUI (bubbletea) has two models:
+- `CheckModel` — used by `bliss check`. Supports navigation across todos and section headers, editing todo titles (enter), inserting sections (s), and renaming sections (enter on a section header).
+- `GroomModel` — used by `bliss groom`. Focuses on reordering.
+
+Both follow the bubbletea value-receiver pattern: `Update` returns a new model rather than mutating in place. Writes to the store happen immediately on each action; a git commit is issued on quit only if any write occurred (`dirty` flag).
+
+### CheckItem type system
+
+`CheckItem` is the row type for `CheckModel`. Each row is one of:
+- **List-name header** (`IsListHeader: true`) — rendered as `[list-name]`, used in the all-lists view.
+- **Section separator** (`IsSectionHeader: true`) — rendered as `──`; carries `SectionIdx` for rename.
+- **Todo** (`Todo != nil`) — carries `ListName` and `ListContextUUID` so section insertion works from the all-lists view without needing to know which list is active.
+
+### Section insert / rename flow
+
+Insert (`s` key): splits the current todo's section at the todo's position, writes the updated list, and inserts a new `CheckItem` separator into the in-memory item slice. In single-list view the items are rebuilt from the list file; in all-lists view the new separator is inserted in place.
+
+Rename (enter on a separator): loads the section name into the text input. On confirm, writes the updated name to the list file and rebuilds items via `itemsFromList`.
+
+## `bliss add` stdin support
+
+When called with no arguments, `bliss add` reads a title from stdin. If stdin is a terminal (character device), it prints a `Title: ` prompt first. This lets piped input work silently: `echo "buy milk" | bliss add`.
