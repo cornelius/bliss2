@@ -17,6 +17,7 @@ func newTestStore(t *testing.T) *Store {
 	dirs := []string{
 		filepath.Join(dir, "contexts"),
 		filepath.Join(dir, "lists"),
+		filepath.Join(dir, "todos"),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
@@ -172,5 +173,84 @@ func TestCommit(t *testing.T) {
 	}
 	if head == nil {
 		t.Error("HEAD is nil after commit")
+	}
+}
+
+func TestWriteReadTodo_personal(t *testing.T) {
+	s := newTestStore(t)
+
+	original := todo.Todo{UUID: "personal-todo-1", Title: "Buy oat milk"}
+	if err := s.WriteTodo("", original); err != nil {
+		t.Fatalf("WriteTodo personal: %v", err)
+	}
+
+	got, err := s.ReadTodo("", original.UUID)
+	if err != nil {
+		t.Fatalf("ReadTodo personal: %v", err)
+	}
+	if got.Title != original.Title {
+		t.Errorf("Title = %q, want %q", got.Title, original.Title)
+	}
+}
+
+func TestListTodos_personal(t *testing.T) {
+	s := newTestStore(t)
+
+	t1 := todo.Todo{UUID: "p-todo-1", Title: "Alpha"}
+	t2 := todo.Todo{UUID: "p-todo-2", Title: "Beta"}
+	s.WriteTodo("", t1)
+	s.WriteTodo("", t2)
+
+	todos, err := s.ListTodos("")
+	if err != nil {
+		t.Fatalf("ListTodos personal: %v", err)
+	}
+	if len(todos) != 2 {
+		t.Errorf("len = %d, want 2", len(todos))
+	}
+}
+
+func TestDeleteTodo_personal(t *testing.T) {
+	s := newTestStore(t)
+	t1 := todo.Todo{UUID: "p-del-1", Title: "Delete me"}
+	s.WriteTodo("", t1)
+
+	if err := s.DeleteTodo("", t1.UUID); err != nil {
+		t.Fatalf("DeleteTodo personal: %v", err)
+	}
+	if _, err := s.ReadTodo("", t1.UUID); err == nil {
+		t.Error("expected error reading deleted personal todo")
+	}
+}
+
+func TestListNames_personal(t *testing.T) {
+	s := newTestStore(t)
+	l := list.List{Sections: []list.Section{{Items: []string{"uuid-1"}}}}
+	s.WriteList("", "today", l)
+
+	names, err := s.ListNames("")
+	if err != nil {
+		t.Fatalf("ListNames personal: %v", err)
+	}
+	if len(names) != 1 || names[0] != "today" {
+		t.Errorf("names = %v, want [today]", names)
+	}
+}
+
+func TestRemoveFromAllLists_personal(t *testing.T) {
+	s := newTestStore(t)
+	l := list.List{Sections: []list.Section{{Items: []string{"uuid-a", "uuid-b"}}}}
+	s.WriteList("", "today", l)
+
+	if err := s.RemoveFromAllLists("", "uuid-a"); err != nil {
+		t.Fatalf("RemoveFromAllLists personal: %v", err)
+	}
+
+	got, _ := s.ReadList("", "today")
+	uuids := list.AllUUIDs(got)
+	for _, u := range uuids {
+		if u == "uuid-a" {
+			t.Error("uuid-a still present after removal")
+		}
 	}
 }

@@ -57,6 +57,7 @@ func Init() (*Store, error) {
 	dirs := []string{
 		filepath.Join(path, "contexts"),
 		filepath.Join(path, "lists"),
+		filepath.Join(path, "todos"),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
@@ -88,6 +89,9 @@ func (s *Store) ContextDir(uuid string) string {
 }
 
 func (s *Store) TodosDir(uuid string) string {
+	if uuid == "" {
+		return filepath.Join(s.path, "todos")
+	}
 	return filepath.Join(s.path, "contexts", uuid, "todos")
 }
 
@@ -241,7 +245,12 @@ func (s *Store) getCreationTimes(contextUUID string) map[string]time.Time {
 	}
 	defer iter.Close()
 
-	prefix := filepath.Join("contexts", contextUUID, "todos") + string(filepath.Separator)
+	var prefix string
+	if contextUUID == "" {
+		prefix = "todos" + string(filepath.Separator)
+	} else {
+		prefix = filepath.Join("contexts", contextUUID, "todos") + string(filepath.Separator)
+	}
 
 	iter.ForEach(func(c *object.Commit) error {
 		files, err := c.Files()
@@ -298,6 +307,9 @@ func (s *Store) ReadList(contextUUID, listName string) (list.List, error) {
 }
 
 func (s *Store) ListNames(contextUUID string) ([]string, error) {
+	if contextUUID == "" {
+		return listNamesInDir(s.PersonalListsDir())
+	}
 	return listNamesInDir(s.ContextListsDir(contextUUID))
 }
 
