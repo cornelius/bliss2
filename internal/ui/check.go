@@ -167,7 +167,11 @@ func (m CheckModel) View() string {
 
 	for i, item := range m.items {
 		if item.SectionHeader != "" {
-			sb.WriteString("\n" + styleSectionHead.Render("["+item.SectionHeader+"]") + "\n")
+			prefix := "\n"
+			if i == 0 {
+				prefix = ""
+			}
+			sb.WriteString(prefix + styleSectionHead.Render("["+item.SectionHeader+"]") + "\n")
 			continue
 		}
 		if item.Todo == nil {
