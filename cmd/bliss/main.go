@@ -394,7 +394,7 @@ func groomCmd() *cobra.Command {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			startList := "incoming"
+			startList := "inbox"
 			if len(args) > 0 {
 				startList = args[0]
 			}

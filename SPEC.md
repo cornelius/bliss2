@@ -100,7 +100,7 @@ A separator is a line containing only `---`, optionally followed by a section na
 
 Sections allow micro-grouping within a list without creating separate list files. A list can have 1 to 5 sections; up to 9 is the hard limit. Sections have no semantic meaning to the data model — they are a presentation and prioritization aid.
 
-The default personal lists follow the personal Kanban framework: `incoming`, `today`, `this-week`, `next-week`, `later`. These can be customized.
+The default personal lists follow the personal Kanban framework: `inbox`, `today`, `this-week`, `next-week`, `later`. These can be customized.
 
 ## Inbox
 

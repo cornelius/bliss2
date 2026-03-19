@@ -101,7 +101,7 @@ bliss check inbox
 
 Interactive grooming mode for organizing todos across lists.
 
-- Without arguments: starts with the inbox (incoming).
+- Without arguments: starts with the inbox.
 - With a list name: starts with that list.
 - Shows one list at a time. The current list fills the view with todos in order including section separators.
 - Todos already acted on in the current session are marked as touched and not shown again, even if they appear in another list during the session. Touched state is in-memory only and is lost when grooming ends.
@@ -110,7 +110,7 @@ Interactive grooming mode for organizing todos across lists.
 
 The default personal Kanban lists are shown in this order:
 
-1. Incoming (inbox)
+1. Inbox
 2. Today
 3. This Week
 4. Next Week
