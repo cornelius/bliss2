@@ -69,6 +69,23 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("getting home directory: %w", err)
+			}
+			// Resolve symlinks to properly compare paths (handles macOS /var -> /private/var)
+			realCwd, err := filepath.EvalSymlinks(cwd)
+			if err != nil {
+				realCwd = cwd
+			}
+			realHome, err := filepath.EvalSymlinks(home)
+			if err != nil {
+				realHome = home
+			}
+			if realCwd == realHome {
+				return fmt.Errorf("cannot init a context in the home directory — use personal mode instead")
+			}
+
 			// Check for parent context
 			if parentUUID, parentDir, err := blisscontext.FindContext(filepath.Dir(cwd)); err == nil {
 				fmt.Printf("Note: parent context found in %s (UUID: %s)\n", parentDir, parentUUID)

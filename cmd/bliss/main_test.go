@@ -297,3 +297,34 @@ func TestList_all(t *testing.T) {
 		t.Errorf("output missing proj2 todo: %s", out)
 	}
 }
+
+func TestInit_homeDirectoryGuard(t *testing.T) {
+	home, env := blissEnv(t)
+
+	out, err := bliss(t, home, env, "init")
+	if err == nil {
+		t.Fatalf("expected error running bliss init in home dir, got: %s", out)
+	}
+	if !strings.Contains(out, "home directory") {
+		t.Errorf("error output %q does not mention home directory", out)
+	}
+}
+
+func TestInit_storesPath(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "myproject")
+	os.MkdirAll(proj, 0755)
+
+	if _, err := bliss(t, proj, env, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+
+	// status should show the path
+	out, err := bliss(t, proj, env, "status")
+	if err != nil {
+		t.Fatalf("status: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, proj) {
+		t.Errorf("status output %q does not contain project path %q", out, proj)
+	}
+}
