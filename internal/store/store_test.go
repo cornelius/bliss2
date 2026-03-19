@@ -275,3 +275,44 @@ func TestOpen_autoInit(t *testing.T) {
 		t.Errorf("todos dir not created by Init: %v", err)
 	}
 }
+
+func TestWriteReadContextMeta_withPath(t *testing.T) {
+	s := newTestStore(t)
+	uuid := "ctx-meta-test"
+
+	if err := s.WriteContextMeta(uuid, "My Project", "/home/user/my-project"); err != nil {
+		t.Fatalf("WriteContextMeta: %v", err)
+	}
+
+	name, path, err := s.ReadContextMeta(uuid)
+	if err != nil {
+		t.Fatalf("ReadContextMeta: %v", err)
+	}
+	if name != "My Project" {
+		t.Errorf("name = %q, want %q", name, "My Project")
+	}
+	if path != "/home/user/my-project" {
+		t.Errorf("path = %q, want %q", path, "/home/user/my-project")
+	}
+}
+
+func TestReadContextMeta_noPath(t *testing.T) {
+	// Old format: name only, no path line. Should return name and empty path.
+	s := newTestStore(t)
+	uuid := "ctx-old-format"
+
+	dir := s.ContextDir(uuid)
+	os.MkdirAll(dir, 0755)
+	os.WriteFile(filepath.Join(dir, "meta.md"), []byte("# Old Name\n"), 0644)
+
+	name, path, err := s.ReadContextMeta(uuid)
+	if err != nil {
+		t.Fatalf("ReadContextMeta: %v", err)
+	}
+	if name != "Old Name" {
+		t.Errorf("name = %q, want %q", name, "Old Name")
+	}
+	if path != "" {
+		t.Errorf("path = %q, want empty", path)
+	}
+}

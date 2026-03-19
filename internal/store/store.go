@@ -103,13 +103,17 @@ func (s *Store) PersonalListsDir() string {
 	return filepath.Join(s.path, "lists")
 }
 
-func (s *Store) ReadContextMeta(uuid string) (string, error) {
+func (s *Store) ReadContextMeta(uuid string) (name, path string, err error) {
 	data, err := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.md"))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	name := strings.TrimPrefix(strings.TrimSpace(string(data)), "# ")
-	return name, nil
+	lines := strings.SplitN(strings.TrimRight(string(data), "\n"), "\n", 2)
+	name = strings.TrimPrefix(lines[0], "# ") // handle old "# name" format
+	if len(lines) > 1 {
+		path = lines[1]
+	}
+	return name, path, nil
 }
 
 // ListContextUUIDs returns the UUIDs of all contexts in the store.
@@ -130,7 +134,7 @@ func (s *Store) ListContextUUIDs() ([]string, error) {
 	return uuids, nil
 }
 
-func (s *Store) WriteContextMeta(uuid, name string) error {
+func (s *Store) WriteContextMeta(uuid, name, path string) error {
 	dir := s.ContextDir(uuid)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("creating context dir: %w", err)
@@ -143,7 +147,7 @@ func (s *Store) WriteContextMeta(uuid, name string) error {
 	}
 
 	metaPath := filepath.Join(dir, "meta.md")
-	content := "# " + name + "\n"
+	content := name + "\n" + path + "\n"
 	return os.WriteFile(metaPath, []byte(content), 0644)
 }
 

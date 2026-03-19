@@ -89,7 +89,7 @@ func initCmd() *cobra.Command {
 			}
 
 			// Write context metadata
-			if err := s.WriteContextMeta(contextUUID, name); err != nil {
+			if err := s.WriteContextMeta(contextUUID, name, cwd); err != nil {
 				return fmt.Errorf("writing context meta: %w", err)
 			}
 
@@ -706,7 +706,7 @@ func contextsCmd() *cobra.Command {
 			}
 
 			for _, uuid := range uuids {
-				name, err := s.ReadContextMeta(uuid)
+				name, _, err := s.ReadContextMeta(uuid)
 				if err != nil {
 					name = uuid
 				}
