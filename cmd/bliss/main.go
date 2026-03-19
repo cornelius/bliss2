@@ -49,7 +49,7 @@ func rootCmd() *cobra.Command {
 		moveCmd(),
 		checkCmd(),
 		groomCmd(),
-		contextsCmd(),
+		statusCmd(),
 		historyCmd(),
 	)
 
@@ -732,49 +732,157 @@ func getInboxTodos(s *store.Store, contextUUID string) ([]todo.Todo, error) {
 	return inbox, nil
 }
 
-func contextsCmd() *cobra.Command {
+func statusCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "contexts",
-		Short: "List all contexts",
+		Use:   "status",
+		Short: "Show context status and git sync",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := store.Open()
-			if err != nil {
-				return err
-			}
-
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
+
 			activeUUID, _, _ := blisscontext.FindContext(cwd)
 
-			uuids, err := s.ListContextUUIDs()
+			s, err := store.Open()
+			if err != nil {
+				return fmt.Errorf("opening store: %w", err)
+			}
+
+			// --- Current context or personal mode ---
+			if activeUUID == "" {
+				fmt.Println(styleActive.Render("  personal mode"))
+			} else {
+				name, path, _ := s.ReadContextMeta(activeUUID)
+				fmt.Printf("%s  %s\n", styleActive.Render("* "+name), styleMuted.Render(path))
+			}
+
+			// Per-list breakdown for current context / personal mode.
+			counts := statusListCounts(s, activeUUID)
+			for _, lc := range counts {
+				fmt.Printf("  %-12s %d\n", lc.name, lc.count)
+			}
+
+			// --- Other contexts ---
+			contextUUIDs, err := s.ListContextUUIDs()
 			if err != nil {
 				return err
 			}
-
-			for _, uuid := range uuids {
-				name, _, err := s.ReadContextMeta(uuid)
-				if err != nil {
-					name = uuid
-				}
-
-				todos, err := s.ListTodos(uuid)
-				if err != nil {
-					todos = nil
-				}
-
-				count := styleMuted.Render(fmt.Sprintf("%d", len(todos)))
+			printedOtherHeader := false
+			for _, uuid := range contextUUIDs {
 				if uuid == activeUUID {
-					fmt.Printf("  %s  %s\n", styleActive.Render("* "+name), count)
-				} else {
-					fmt.Printf("    %-28s%s\n", name, count)
+					continue
+				}
+				if !printedOtherHeader {
+					fmt.Println()
+					printedOtherHeader = true
+				}
+				name, path, _ := s.ReadContextMeta(uuid)
+				pathDisplay := styleMuted.Render(path)
+				if path != "" && !isContextPathFresh(path, uuid) {
+					pathDisplay = styleMuted.Render("(stale path)")
+				}
+				compact := compactListSummary(s, uuid)
+				fmt.Printf("  %-24s  %s  %s\n", name, pathDisplay, styleMuted.Render(compact))
+			}
+
+			// --- Personal section (when inside a context) ---
+			if activeUUID != "" {
+				personalCounts := statusListCounts(s, "")
+				if len(personalCounts) > 0 {
+					fmt.Println()
+					fmt.Println(styleMuted.Render("  personal"))
+					parts := []string{}
+					for _, lc := range personalCounts {
+						parts = append(parts, fmt.Sprintf("%s %d", lc.name, lc.count))
+					}
+					fmt.Printf("  %s\n", strings.Join(parts, "  "))
 				}
 			}
+
+			// --- Git sync ---
+			fmt.Println()
+			remote, ahead, behind, _ := s.GitSyncStatus()
+			if remote == "" {
+				fmt.Println(styleMuted.Render("  store  no remote"))
+			} else if ahead == 0 && behind == 0 {
+				fmt.Printf("%s\n", styleMuted.Render(fmt.Sprintf("  store  synced  (%s)", remote)))
+			} else {
+				var parts []string
+				if ahead > 0 {
+					parts = append(parts, fmt.Sprintf("↑%d ahead", ahead))
+				}
+				if behind > 0 {
+					parts = append(parts, fmt.Sprintf("↓%d behind", behind))
+				}
+				fmt.Printf("%s\n", styleMuted.Render(fmt.Sprintf("  store  %s  %s", strings.Join(parts, "  "), remote)))
+			}
+
 			return nil
 		},
 	}
+}
+
+type listCount struct {
+	name  string
+	count int
+}
+
+// statusListCounts returns per-list todo counts for a context (or personal mode if "").
+// Lists with zero todos are omitted.
+func statusListCounts(s *store.Store, contextUUID string) []listCount {
+	var names []string
+	if contextUUID == "" {
+		names, _ = s.PersonalListNames()
+	} else {
+		names, _ = s.ListNames(contextUUID)
+	}
+
+	var counts []listCount
+	for _, name := range names {
+		l, err := s.ReadList(contextUUID, name)
+		if err != nil {
+			continue
+		}
+		n := len(list.AllUUIDs(l))
+		if n > 0 {
+			counts = append(counts, listCount{name, n})
+		}
+	}
+
+	inboxCount := statusInboxCount(s, contextUUID)
+	if inboxCount > 0 {
+		counts = append(counts, listCount{"inbox", inboxCount})
+	}
+
+	return counts
+}
+
+func statusInboxCount(s *store.Store, contextUUID string) int {
+	todos, err := getInboxTodos(s, contextUUID)
+	if err != nil {
+		return 0
+	}
+	return len(todos)
+}
+
+func compactListSummary(s *store.Store, contextUUID string) string {
+	counts := statusListCounts(s, contextUUID)
+	parts := make([]string, 0, len(counts))
+	for _, lc := range counts {
+		parts = append(parts, fmt.Sprintf("%s %d", lc.name, lc.count))
+	}
+	return strings.Join(parts, "  ")
+}
+
+// isContextPathFresh checks whether a path still contains a .bliss-context pointing to uuid.
+func isContextPathFresh(path, uuid string) bool {
+	data, err := os.ReadFile(filepath.Join(path, ".bliss-context"))
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(data)) == uuid
 }
 
 func historyCmd() *cobra.Command {

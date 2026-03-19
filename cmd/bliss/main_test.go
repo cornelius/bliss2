@@ -328,3 +328,82 @@ func TestInit_storesPath(t *testing.T) {
 		t.Errorf("status output %q does not contain project path %q", out, proj)
 	}
 }
+
+func TestStatus_personalMode(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	bliss(t, dir, env, "add", "Personal task one")
+	bliss(t, dir, env, "add", "Personal task two")
+
+	out, err := bliss(t, dir, env, "status")
+	if err != nil {
+		t.Fatalf("status in personal mode: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "personal mode") {
+		t.Errorf("output %q missing 'personal mode'", out)
+	}
+	if !strings.Contains(out, "inbox") {
+		t.Errorf("output %q missing inbox count", out)
+	}
+	if !strings.Contains(out, "no remote") {
+		t.Errorf("output %q missing git sync line", out)
+	}
+}
+
+func TestStatus_insideContext(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "myproject")
+	os.MkdirAll(proj, 0755)
+
+	bliss(t, proj, env, "init", "--name", "My Project")
+	bliss(t, proj, env, "add", "Context task")
+
+	out, err := bliss(t, proj, env, "status")
+	if err != nil {
+		t.Fatalf("status inside context: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "My Project") {
+		t.Errorf("output %q missing context name", out)
+	}
+	if !strings.Contains(out, proj) {
+		t.Errorf("output %q missing context path", out)
+	}
+	if !strings.Contains(out, "inbox") {
+		t.Errorf("output %q missing inbox", out)
+	}
+	if !strings.Contains(out, "no remote") {
+		t.Errorf("output %q missing git sync line", out)
+	}
+}
+
+func TestStatus_stalePath(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "willmove")
+	os.MkdirAll(proj, 0755)
+
+	bliss(t, proj, env, "init", "--name", "Will Move")
+
+	// Remove the project dir to simulate a moved/deleted context.
+	os.RemoveAll(proj)
+
+	// Run status from home (personal mode) — should show stale path.
+	out, err := bliss(t, home, env, "status")
+	if err != nil {
+		t.Fatalf("status with stale: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "stale") {
+		t.Errorf("output %q missing stale indicator", out)
+	}
+}
+
+func TestContexts_removed(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	out, err := bliss(t, dir, env, "contexts")
+	// Should error — command no longer exists.
+	if err == nil {
+		t.Errorf("expected error for removed 'contexts' command, got: %s", out)
+	}
+}
