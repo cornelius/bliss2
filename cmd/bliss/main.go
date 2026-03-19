@@ -14,8 +14,16 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+)
+
+var (
+	styleListHeader = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	stylePos        = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	styleMuted      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	styleActive     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
 )
 
 func main() {
@@ -157,7 +165,11 @@ func addCmd() *cobra.Command {
 				return fmt.Errorf("committing: %w", err)
 			}
 
-			fmt.Printf("Added: %s\n", title)
+			if listName != "" {
+				fmt.Printf("Added to [%s]: %s\n", listName, title)
+			} else {
+				fmt.Printf("Added: %s\n", title)
+			}
 			return nil
 		},
 	}
@@ -205,9 +217,9 @@ func listCmd() *cobra.Command {
 			}
 
 			printList := func(header string, uuids []string, resolve func(string) (todo.Todo, error)) {
-				fmt.Printf("[%s]\n", header)
+				fmt.Println(styleListHeader.Render("[" + header + "]"))
 				if len(uuids) == 0 {
-					fmt.Println("  (no todos)")
+					fmt.Println(styleMuted.Render("  (no todos)"))
 					return
 				}
 				for _, uuid := range uuids {
@@ -215,7 +227,7 @@ func listCmd() *cobra.Command {
 					if err != nil {
 						continue
 					}
-					fmt.Printf("  %d. %s\n", pos, t.Title)
+					fmt.Printf("  %s %s\n", stylePos.Render(fmt.Sprintf("%d.", pos)), t.Title)
 					session[pos] = uuid
 					pos++
 				}
@@ -663,11 +675,12 @@ func contextsCmd() *cobra.Command {
 					todos = nil
 				}
 
-				marker := "  "
+				count := styleMuted.Render(fmt.Sprintf("%d todos", len(todos)))
 				if uuid == activeUUID {
-					marker = "* "
+					fmt.Printf("%s %s\n", styleActive.Render("* "+name), count)
+				} else {
+					fmt.Printf("  %-30s %s\n", name, count)
 				}
-				fmt.Printf("%s%-30s %d todos\n", marker, name, len(todos))
 			}
 			return nil
 		},
@@ -711,7 +724,7 @@ func historyCmd() *cobra.Command {
 
 			for _, e := range entries {
 				msg := strings.TrimPrefix(strings.TrimSpace(e.Message), "bliss: ")
-				fmt.Printf("%s  %s\n", e.Time.Format(time.DateTime), msg)
+				fmt.Printf("%s  %s\n", styleMuted.Render(e.Time.Format(time.DateTime)), msg)
 			}
 			return nil
 		},

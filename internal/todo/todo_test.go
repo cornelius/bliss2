@@ -49,6 +49,18 @@ func TestFormat_roundtrip(t *testing.T) {
 				Body:  "Ask about the appointment.\nBring vaccination records.",
 			},
 		},
+		{
+			name: "apostrophe in title",
+			todo: Todo{Title: "Fix John's bug"},
+		},
+		{
+			name: "double quotes in title",
+			todo: Todo{Title: `He said "hello"`},
+		},
+		{
+			name: "mixed special chars",
+			todo: Todo{Title: `It's a "test" & more`},
+		},
 	}
 
 	for _, tt := range tests {

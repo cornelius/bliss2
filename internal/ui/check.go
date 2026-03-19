@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // CheckItem holds a todo to display in the check view.
@@ -158,7 +159,7 @@ func (m CheckModel) View() string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString("bliss check — arrows to navigate, enter to edit, space/d to complete, q to quit\n\n")
+	sb.WriteString(styleHeader.Render("bliss check") + styleMuted.Render("  ↑↓ navigate  enter edit  space/d complete  q quit") + "\n\n")
 
 	if m.err != nil {
 		sb.WriteString(fmt.Sprintf("error: %v\n", m.err))
@@ -166,27 +167,24 @@ func (m CheckModel) View() string {
 
 	for i, item := range m.items {
 		if item.SectionHeader != "" {
-			sb.WriteString(fmt.Sprintf("\n[%s]\n", item.SectionHeader))
+			sb.WriteString("\n" + styleSectionHead.Render("["+item.SectionHeader+"]") + "\n")
 			continue
 		}
 		if item.Todo == nil {
 			continue
 		}
 
-		cursor := "  "
-		if i == m.cursor {
-			cursor = "> "
-		}
-
 		if m.editing && i == m.cursor {
-			sb.WriteString(cursor + m.textInput.View() + "\n")
+			sb.WriteString(styleEditing.Render("> ") + m.textInput.View() + "\n")
+		} else if i == m.cursor {
+			sb.WriteString(styleCursor.Render("> ") + lipgloss.NewStyle().Bold(true).Render(item.Todo.Title) + "\n")
 		} else {
-			sb.WriteString(fmt.Sprintf("%s%s\n", cursor, item.Todo.Title))
+			sb.WriteString("  " + item.Todo.Title + "\n")
 		}
 	}
 
 	if len(m.todoOnlyItems()) == 0 {
-		sb.WriteString("  (no todos)\n")
+		sb.WriteString(styleMuted.Render("  (no todos)") + "\n")
 	}
 
 	return sb.String()

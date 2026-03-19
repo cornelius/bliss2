@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // DefaultKanbanOrder defines the default list order for grooming.
@@ -376,18 +377,15 @@ func (m GroomModel) View() string {
 
 	var sb strings.Builder
 
-	// Header
 	listName := m.currentListName()
-	sb.WriteString(fmt.Sprintf("bliss groom — [%s]  tab/shift-tab: switch list  d/space: complete  q: quit\n", listName))
-	sb.WriteString("Lists: ")
+	sb.WriteString(styleHeader.Render("bliss groom") + "  " + styleHeader.Render("["+listName+"]") + "\n")
+
+	sb.WriteString(styleMuted.Render("tab/shift-tab switch  d/space complete  q quit") + "\n")
 	for i, name := range m.listOrder {
-		if i > 0 {
-			sb.WriteString("  ")
-		}
 		if i == m.listIdx {
-			sb.WriteString(fmt.Sprintf("[%d:%s]", i+1, name))
+			sb.WriteString(styleCursor.Render(fmt.Sprintf(" %d:%s", i+1, name)))
 		} else {
-			sb.WriteString(fmt.Sprintf("%d:%s", i+1, name))
+			sb.WriteString(styleMuted.Render(fmt.Sprintf(" %d:%s", i+1, name)))
 		}
 	}
 	sb.WriteString("\n\n")
@@ -396,33 +394,29 @@ func (m GroomModel) View() string {
 		sb.WriteString(fmt.Sprintf("error: %v\n", m.err))
 	}
 
+	todoCount := 0
 	for i, item := range m.items {
 		if item.SectionHeader != "" {
-			sb.WriteString(fmt.Sprintf("\n--- %s ---\n", item.SectionHeader))
+			sb.WriteString("\n" + styleSectionHead.Render("── "+item.SectionHeader) + "\n")
 			continue
 		}
 		if item.Todo == nil {
 			continue
 		}
-		cursor := "  "
+		todoCount++
 		if i == m.cursor {
-			cursor = "> "
+			sb.WriteString(styleCursor.Render("> ") + lipgloss.NewStyle().Bold(true).Render(item.Todo.Title) + "\n")
+		} else {
+			sb.WriteString("  " + item.Todo.Title + "\n")
 		}
-		sb.WriteString(fmt.Sprintf("%s%s\n", cursor, item.Todo.Title))
 	}
 
-	todoCount := 0
-	for _, item := range m.items {
-		if item.Todo != nil {
-			todoCount++
-		}
-	}
 	if todoCount == 0 {
-		sb.WriteString("  (no todos)\n")
+		sb.WriteString(styleMuted.Render("  (no todos)") + "\n")
 	}
 
 	if m.pendingListKey != "" {
-		sb.WriteString(fmt.Sprintf("\nMove to section: press 1-9 (key: %s)\n", m.pendingListKey))
+		sb.WriteString("\n" + styleMuted.Render("move to section: press 1-9") + "\n")
 	}
 
 	return sb.String()
