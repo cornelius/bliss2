@@ -43,7 +43,14 @@ func Open() (*Store, error) {
 
 	repo, err := git.PlainOpen(path)
 	if err != nil {
+		if err == git.ErrRepositoryNotExists {
+			return nil, fmt.Errorf("%s exists but is not a bliss2 store — please remove it to start fresh", path)
+		}
 		return nil, fmt.Errorf("opening store git repo at %s: %w", path, err)
+	}
+
+	if _, err := os.Stat(filepath.Join(path, "bliss2-was-here")); os.IsNotExist(err) {
+		return nil, fmt.Errorf("%s exists but is not a bliss2 store — please remove it to start fresh", path)
 	}
 
 	return &Store{path: path, repo: repo}, nil
@@ -63,6 +70,13 @@ func Init() (*Store, error) {
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
 			return nil, fmt.Errorf("creating directory %s: %w", d, err)
+		}
+	}
+
+	markerPath := filepath.Join(path, "bliss2-was-here")
+	if _, err := os.Stat(markerPath); os.IsNotExist(err) {
+		if err := os.WriteFile(markerPath, []byte("1\n"), 0644); err != nil {
+			return nil, fmt.Errorf("writing store marker: %w", err)
 		}
 	}
 

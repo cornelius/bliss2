@@ -37,8 +37,10 @@ func main() {
 
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "bliss",
-		Short: "bliss — a personal todo management tool",
+		Use:          "bliss",
+		Short:        "bliss — a personal todo management tool",
+		SilenceErrors: true,
+		SilenceUsage:  true,
 	}
 
 	root.AddCommand(
