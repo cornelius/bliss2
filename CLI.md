@@ -38,6 +38,8 @@ Captures a new todo in the current context.
 - By default the todo lands in the inbox (not added to any list).
 - `--list/-l <name>` adds the todo directly to a named list, appended to the end.
 - `--urgent` places the todo at the top of the target list. Only valid in combination with `--list`.
+- `--defer <time>` defers the todo until the given time. The todo is hidden from `bliss show` until then. See `bliss defer` for supported time formats.
+- `--scene <name>` tags the todo with a scene. The todo is only shown in `bliss show` when the active scene matches (see `bliss scene`). A todo with no scene tag is shown regardless of the active scene.
 
 ```
 bliss add "Feed the penguins"
@@ -45,11 +47,31 @@ bliss add "Fix John's bug" -l today
 bliss add                              # prompts for title interactively
 echo "Fix John's bug" | bliss add     # reads title from pipe
 bliss add "Feed the penguins" -l today --urgent
+bliss add "Call dentist" --defer tomorrow
+bliss add "Buy milk" --scene errands
+```
+
+#### `bliss show` _(planned)_
+
+Shows todos that are relevant right now — the primary daily-use command.
+
+- Filters by current context (directory-based, same as `bliss list`).
+- Hides todos whose `defer` time is in the future (see `bliss defer`).
+- If a scene is set (see `bliss scene`), personal todos are further filtered to those matching the active scene. Project todos are not filtered by scene.
+- Without arguments: shows context lists, then personal lists. Inbox is omitted unless it contains items.
+- With a list name: shows only that list, applying the same filters.
+- Writes a session mapping like `bliss list`, so `bliss done` and `bliss move` work the same way.
+
+The intent is that `bliss show` answers "what do I work on now?", while `bliss list` gives the full unfiltered picture.
+
+```
+bliss show
+bliss show today
 ```
 
 #### `bliss list [list-name]`
 
-Displays todos in the current context with position numbers.
+Displays todos in the current context with position numbers — the full, unfiltered view.
 
 - Without arguments: shows context lists first, then personal lists, then inbox.
 - With a list name: shows only that list.
@@ -89,6 +111,49 @@ Moves a todo to a named list.
 ```
 bliss move 3 -l today
 bliss move 3 -l today --urgent
+```
+
+#### `bliss defer <number|uuid> <time>` _(planned)_
+
+Defers a todo until the given time. The todo is hidden from `bliss show` until that time passes, but remains visible in `bliss list`.
+
+Supported time expressions:
+- Relative: `tomorrow`, `tonight`, `in 3 days`, `in 2 weeks`
+- Day names: `monday`, `friday` (resolved to the next occurrence)
+- Absolute: `2026-03-25`, `2026-03-25 20:00`
+
+```
+bliss defer 3 tomorrow
+bliss defer 3 monday
+bliss defer 3 "in 2 weeks"
+bliss defer 3 2026-03-25
+```
+
+#### `bliss undefer <number|uuid>` _(planned)_
+
+Removes the deferral from a todo, making it immediately visible in `bliss show`.
+
+```
+bliss undefer 3
+```
+
+#### `bliss scene [name]` _(planned)_
+
+Sets or shows the active scene — a location or mode of working (e.g. `computer`, `home`, `errands`) used to filter personal todos in `bliss show`.
+
+- Without arguments: prints the current scene, or `(none)` if not set.
+- With a name: sets the active scene.
+- `--clear`: clears the active scene.
+
+The scene is machine-local state stored at `~/.bliss2/scene`. It is not committed to git, so different machines can have independent scenes.
+
+Todos can be tagged with a scene at creation time using `bliss add --scene <name>`. A todo with no scene tag is shown regardless of the active scene.
+
+```
+bliss scene
+bliss scene computer
+bliss scene home
+bliss scene --clear
 ```
 
 #### `bliss contexts`
@@ -181,6 +246,18 @@ Sections within a list are separated by `---` lines in the list file, optionally
 ---
 
 ## Rationale
+
+### Scenes vs project contexts
+
+Project contexts (directory-based) answer "which project am I working on?" Scenes answer "what am I capable of doing right now?" — a location or mode like `computer`, `home`, or `errands`. They are orthogonal: you can be in the `bliss2` project context and in `computer` scene simultaneously.
+
+Scenes only filter personal todos, not project todos. Project todos are already scoped by directory; adding a second scene filter on top would make them too hard to reach. Personal todos — which are cross-context by nature — benefit from scene filtering because they often represent tasks tied to a physical location or situation.
+
+A todo with no scene tag is always shown, regardless of the active scene. Tagging is opt-in: you only tag todos where the scene is meaningful.
+
+### `bliss show` vs `bliss list`
+
+`bliss list` is the complete, unfiltered view — all todos, regardless of time or context mode. `bliss show` is the filtered, actionable view: what is relevant right now, given where you are and when it is. The split gives each command a single clear purpose. As features like time deferral are added, they affect `bliss show` only — `bliss list` remains a stable, predictable full dump.
 
 ### Strict separation of interactive and non-interactive commands
 

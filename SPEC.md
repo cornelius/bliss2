@@ -47,6 +47,16 @@ The file contains a single UUID identifying the context in the store:
 
 The CLI finds the context by walking up the directory tree from the current working directory, using the first `.bliss-context` file found. This mirrors the behavior of git.
 
+## Scene State
+
+The active scene is stored as a plain text file at `~/.bliss2/scene`, containing the scene name and a trailing newline. If the file is absent, no scene is active.
+
+```
+computer
+```
+
+This file is machine-local and is not committed to git. It is read by `bliss show` to filter personal todos. It is written and cleared by `bliss scene`.
+
 ## Todo File Format
 
 Each todo is stored as a plain text Markdown file named by its UUID:
@@ -64,7 +74,25 @@ Make sure to bring the fish from the freezer first.
 Check with the zookeeper about portion sizes.
 ```
 
-No metadata is stored in the file. Creation and modification timestamps are derived from git history.
+Creation and modification timestamps are derived from git history and are not stored in the file.
+
+When a todo has metadata (currently only deferral), it is stored as YAML front matter before the title:
+
+```
+---
+defer: 2026-03-25T20:00:00
+---
+Feed the penguins
+
+Make sure to bring the fish from the freezer first.
+```
+
+Supported front matter fields:
+
+- `defer` — ISO 8601 datetime. A todo with a `defer` value in the future is hidden from `bliss show` and shown in `bliss list`.
+- `scene` — a plain string. A todo with a `scene` value is only shown in `bliss show` when the active scene matches. A todo with no `scene` field is shown regardless of the active scene.
+
+Front matter is only written when at least one field is present. Todos without metadata remain plain text files.
 
 ## List Files
 
@@ -129,6 +157,10 @@ Creation and modification timestamps are not stored in files. They are derived f
 ---
 
 ## Rationale
+
+### Front matter for deferral
+
+The general principle is that no metadata is stored in todo files — timestamps come from git. Deferral is an exception because it is an explicit, user-set value that cannot be derived from history. It is stored as YAML front matter rather than in a separate file to keep the todo self-contained: the deferral is an attribute of the todo itself, not a list membership or ordering concern. Front matter is only written when a `defer` value is present; todos without deferral remain plain text files.
 
 ### One file per todo
 
