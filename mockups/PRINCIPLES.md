@@ -63,3 +63,19 @@ Output flows naturally between a shell prompt above and a shell prompt below.
 **Scannability.**
 The most important information is findable in one glance. Structure guides
 the eye; the reader should never have to search.
+
+## Command categories
+
+Two categories of command, with different output philosophies:
+
+**Overview commands** (`status`, `list`, `history`): answer "what is the
+state of my world?" The user pauses to read.
+- Open with a `bliss <command>` header line for orientation and scrollback
+  legibility.
+- Structured, multi-line. Use the full context/path label format.
+
+**Workflow commands** (`add`, `done`, `move`, `init`): the user does a
+thing and expects brief confirmation. They do not stop to read — they glance.
+- No command header. The user knows what they ran.
+- One confirmation line: muted action phrase + key information.
+- Stay out of the way. Quiet on success.

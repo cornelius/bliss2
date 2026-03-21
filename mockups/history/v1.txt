@@ -1,0 +1,57 @@
+# bliss history — v1 mockup
+#
+# Three variants:
+#   bliss history           filtered to current context (or personal if no context)
+#   bliss history --personal filtered to personal commits
+#   bliss history --all     all commits, with context label column
+#
+# Context attribution: derived from which path in the store each commit touched.
+#   contexts/<uuid>/…  → that context
+#   todos/…            → personal
+#   anything else      → no label (meta/internal)
+#
+# Header: "bliss history  <scope>  Mon Mar 21, 2026" — date like bliss status.
+# Entries: "2026-03-21 16:04  message" — friendly ISO datetime, no leading indent.
+# In --all: extra column for context name, padded to align messages.
+# Timestamp muted, context label muted, message plain.
+
+
+# ── bliss history (inside api context) ───────────────────────────────────────
+
+bliss history  Context: api  Path: ~/work/api  Sat Mar 21, 2026
+
+2026-03-21 16:04  move "Implement JWT refresh token rotation" to later
+2026-03-21 16:04  complete "Hotfix: prod is down"
+2026-03-21 16:04  add todo "Hotfix: prod is down"
+2026-03-21 16:04  add todo "Review PR #412"
+2026-03-21 16:04  add todo "Check in with security team"
+2026-03-21 16:04  add list sections
+2026-03-21 16:04  init context api (c3f4f699-f527-47e2-a6fa-42549f066fb4)
+
+
+# ── bliss history --personal ──────────────────────────────────────────────────
+
+bliss history  Personal  Sat Mar 21, 2026
+
+2026-03-21 16:04  add todo "Buy birthday gift for mom"
+2026-03-21 16:04  add todo "Call landlord about heating"
+2026-03-21 16:04  add todo "Set up home NAS with ZFS"
+2026-03-21 16:04  add todo "Learn Nix"
+2026-03-21 16:04  add todo "Read «Shape Up»"
+
+
+# ── bliss history --all ───────────────────────────────────────────────────────
+# Context label column width = max context name length (or "personal").
+# Padded to align message column. No label for meta/internal commits.
+
+bliss history --all  Sat Mar 21, 2026
+
+2026-03-21 16:04  api       move "Implement JWT refresh token rotation" to later
+2026-03-21 16:04  api       complete "Hotfix: prod is down"
+2026-03-21 16:04  api       add todo "Hotfix: prod is down"
+2026-03-21 16:04  api       add todo "Review PR #412"
+2026-03-21 16:04  personal  add todo "Buy birthday gift for mom"
+2026-03-21 16:04  personal  add todo "Call landlord about heating"
+2026-03-21 16:04  frontend  add todo "Migrate component library to shadcn/ui"
+2026-03-21 16:04  mobile    add todo "Fix crash on deep link when app is backgrounded"
+2026-03-21 16:04            init bliss2-was-here

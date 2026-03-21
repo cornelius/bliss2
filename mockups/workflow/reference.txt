@@ -1,0 +1,38 @@
+# bliss workflow commands — reference mockup
+#
+# Styling:
+#   action phrase  → stMuted   ("Added:", "Added to", "Done:", "Moved to", "Initialized:")
+#   list name      → stBold    (after "Added to" / "Moved to")
+#   separator ":"  → stMuted
+#   title / name   → plain
+#   path           → stMuted
+#
+# No command header. No brackets around list names. Single line.
+
+
+# ── bliss add ────────────────────────────────────────────────────────────────
+
+# No list (goes to inbox):
+Added: Check in with security team
+
+# To a named list:
+Added to today: Review PR #412
+
+# To a named list, urgent:
+Added to today: Hotfix: prod is down
+
+
+# ── bliss done ───────────────────────────────────────────────────────────────
+
+Done: Hotfix: prod is down
+
+
+# ── bliss move ───────────────────────────────────────────────────────────────
+
+Moved to later: Implement JWT refresh token rotation
+
+
+# ── bliss init ───────────────────────────────────────────────────────────────
+
+# Uses Context: and Path: labels — consistent vocabulary with the rest of bliss.
+Initialized  Context: api  Path: ~/work/api
