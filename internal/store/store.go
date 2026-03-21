@@ -126,8 +126,9 @@ func (s *Store) PersonalListsDir() string {
 }
 
 type contextMeta struct {
-	Name  string            `yaml:"name"`
-	Paths map[string]string `yaml:"paths,omitempty"`
+	Name      string            `yaml:"name"`
+	CreatedAt time.Time         `yaml:"created_at,omitempty"`
+	Paths     map[string]string `yaml:"paths,omitempty"`
 }
 
 func (s *Store) ReadContextMeta(uuid string) (name, path string, err error) {
@@ -181,6 +182,9 @@ func (s *Store) WriteContextMeta(uuid, name, path string) error {
 		yaml.Unmarshal(data, &m)
 	}
 	m.Name = name
+	if m.CreatedAt.IsZero() {
+		m.CreatedAt = time.Now().UTC()
+	}
 	if m.Paths == nil {
 		m.Paths = make(map[string]string)
 	}

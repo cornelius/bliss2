@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // newTestStore creates a Store backed by a temp directory for testing.
@@ -337,6 +340,71 @@ func TestWriteContextMeta_preservesOtherHosts(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "other-host") {
 		t.Errorf("other host's path was lost: %s", data)
+	}
+}
+
+func TestWriteContextMeta_createdAt(t *testing.T) {
+	s := newTestStore(t)
+	uuid := "ctx-createdat"
+
+	before := time.Now().UTC().Truncate(time.Second)
+	if err := s.WriteContextMeta(uuid, "My Project", "/home/user/proj"); err != nil {
+		t.Fatalf("WriteContextMeta: %v", err)
+	}
+	after := time.Now().UTC().Truncate(time.Second)
+
+	// Read raw YAML to verify the field is present.
+	data, err := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
+	if err != nil {
+		t.Fatalf("reading meta.yaml: %v", err)
+	}
+	if !strings.Contains(string(data), "created_at") {
+		t.Errorf("meta.yaml missing created_at field:\n%s", data)
+	}
+
+	// Parse and check the value is within the expected window.
+	var m struct {
+		CreatedAt time.Time `yaml:"created_at"`
+	}
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		t.Fatalf("unmarshaling: %v", err)
+	}
+	ts := m.CreatedAt.UTC().Truncate(time.Second)
+	if ts.Before(before) || ts.After(after) {
+		t.Errorf("created_at = %v, want between %v and %v", ts, before, after)
+	}
+}
+
+func TestWriteContextMeta_createdAtPreserved(t *testing.T) {
+	// Re-writing meta (e.g. to add a new host's path) must not reset created_at.
+	s := newTestStore(t)
+	uuid := "ctx-preserve-ts"
+
+	if err := s.WriteContextMeta(uuid, "My Project", "/home/user/proj"); err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
+	var first struct {
+		CreatedAt time.Time `yaml:"created_at"`
+	}
+	yaml.Unmarshal(data, &first)
+
+	// Small sleep to ensure time advances.
+	time.Sleep(10 * time.Millisecond)
+
+	if err := s.WriteContextMeta(uuid, "My Project", "/home/other/proj"); err != nil {
+		t.Fatalf("second write: %v", err)
+	}
+
+	data, _ = os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
+	var second struct {
+		CreatedAt time.Time `yaml:"created_at"`
+	}
+	yaml.Unmarshal(data, &second)
+
+	if !second.CreatedAt.Equal(first.CreatedAt) {
+		t.Errorf("created_at changed on second write: was %v, now %v", first.CreatedAt, second.CreatedAt)
 	}
 }
 
