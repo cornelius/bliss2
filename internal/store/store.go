@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -118,17 +120,22 @@ func (s *Store) PersonalListsDir() string {
 	return filepath.Join(s.path, "lists")
 }
 
+type contextMeta struct {
+	Name  string            `yaml:"name"`
+	Paths map[string]string `yaml:"paths,omitempty"`
+}
+
 func (s *Store) ReadContextMeta(uuid string) (name, path string, err error) {
-	data, err := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.md"))
+	data, err := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
 	if err != nil {
 		return "", "", err
 	}
-	lines := strings.SplitN(strings.TrimRight(string(data), "\n"), "\n", 2)
-	name = strings.TrimPrefix(lines[0], "# ") // handle old "# name" format
-	if len(lines) > 1 {
-		path = lines[1]
+	var m contextMeta
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		return "", "", fmt.Errorf("parsing meta.yaml: %w", err)
 	}
-	return name, path, nil
+	host, _ := os.Hostname()
+	return m.Name, m.Paths[host], nil
 }
 
 // ListContextUUIDs returns the UUIDs of all contexts in the store.
@@ -161,9 +168,25 @@ func (s *Store) WriteContextMeta(uuid, name, path string) error {
 		return fmt.Errorf("creating lists dir: %w", err)
 	}
 
-	metaPath := filepath.Join(dir, "meta.md")
-	content := name + "\n" + path + "\n"
-	return os.WriteFile(metaPath, []byte(content), 0644)
+	metaPath := filepath.Join(dir, "meta.yaml")
+
+	// Read existing meta to preserve other hosts' paths.
+	var m contextMeta
+	if data, err := os.ReadFile(metaPath); err == nil {
+		yaml.Unmarshal(data, &m)
+	}
+	m.Name = name
+	if m.Paths == nil {
+		m.Paths = make(map[string]string)
+	}
+	host, _ := os.Hostname()
+	m.Paths[host] = path
+
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("marshaling meta.yaml: %w", err)
+	}
+	return os.WriteFile(metaPath, data, 0644)
 }
 
 func (s *Store) WriteTodo(contextUUID string, t todo.Todo) error {

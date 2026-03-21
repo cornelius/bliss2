@@ -16,7 +16,7 @@ All data lives in a single directory in the user's home:
 ~/.bliss2/
   contexts/
     <context-uuid>/
-      meta.md
+      meta.yaml
       todos/
         <todo-uuid>.md
       lists/
@@ -26,10 +26,26 @@ All data lives in a single directory in the user's home:
 ```
 
 - `contexts/` contains one subdirectory per context, named by UUID.
-- `meta.md` stores the human-readable name of the context and any other context-level metadata.
+- `meta.yaml` stores the human-readable name of the context and the filesystem path to the context directory, keyed by hostname.
 - `todos/` contains one file per todo, named by UUID.
 - `lists/` inside a context contains shared, context-specific list files.
 - `lists/` at the store root contains personal, cross-context list files.
+
+## Context Metadata
+
+Context metadata is stored in `meta.yaml`:
+
+```yaml
+name: bliss2
+paths:
+  thinkpad: /home/cs/git/bliss2
+  macbook: /Users/cs/projects/bliss2
+```
+
+- `name` is the human-readable context name, shared across all machines.
+- `paths` maps hostname to the local filesystem path where the context lives on that machine.
+
+Each machine writes only its own entry under `paths`. This means the file can be synced via git across machines without conflicts — every host owns a distinct key. A stale entry for a machine that no longer exists is harmless.
 
 ## Context Markers
 

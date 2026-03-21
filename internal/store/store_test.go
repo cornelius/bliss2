@@ -5,6 +5,7 @@ import (
 	"bliss/internal/todo"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -296,24 +297,46 @@ func TestWriteReadContextMeta_withPath(t *testing.T) {
 	}
 }
 
-func TestReadContextMeta_noPath(t *testing.T) {
-	// Old format: name only, no path line. Should return name and empty path.
+func TestReadContextMeta_unknownHost(t *testing.T) {
+	// meta.yaml exists but has no entry for the current host — path should be empty.
 	s := newTestStore(t)
-	uuid := "ctx-old-format"
+	uuid := "ctx-other-host"
 
 	dir := s.ContextDir(uuid)
 	os.MkdirAll(dir, 0755)
-	os.WriteFile(filepath.Join(dir, "meta.md"), []byte("# Old Name\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("name: Other Project\npaths:\n  other-host: /home/other/project\n"), 0644)
 
 	name, path, err := s.ReadContextMeta(uuid)
 	if err != nil {
 		t.Fatalf("ReadContextMeta: %v", err)
 	}
-	if name != "Old Name" {
-		t.Errorf("name = %q, want %q", name, "Old Name")
+	if name != "Other Project" {
+		t.Errorf("name = %q, want %q", name, "Other Project")
 	}
 	if path != "" {
 		t.Errorf("path = %q, want empty", path)
+	}
+}
+
+func TestWriteContextMeta_preservesOtherHosts(t *testing.T) {
+	// Writing meta on the current host should not remove other hosts' paths.
+	s := newTestStore(t)
+	uuid := "ctx-multi-host"
+
+	dir := s.ContextDir(uuid)
+	os.MkdirAll(dir, 0755)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("name: Shared Project\npaths:\n  other-host: /home/other/project\n"), 0644)
+
+	if err := s.WriteContextMeta(uuid, "Shared Project", "/home/cs/project"); err != nil {
+		t.Fatalf("WriteContextMeta: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "meta.yaml"))
+	if err != nil {
+		t.Fatalf("reading meta.yaml: %v", err)
+	}
+	if !strings.Contains(string(data), "other-host") {
+		t.Errorf("other host's path was lost: %s", data)
 	}
 }
 
