@@ -71,9 +71,11 @@ bliss show today
 
 #### `bliss list [list-name]`
 
-Displays todos in the current context with position numbers — the full, unfiltered view.
+Displays todos with position numbers — the full, unfiltered view.
 
-- Without arguments: shows context lists first, then personal lists, then inbox.
+- Without arguments, inside a context: shows context lists only, inbox included.
+- Without arguments, outside any context: shows personal lists only.
+- `--personal/-p`: shows personal lists regardless of context. Can be combined with a list name.
 - With a list name: shows only that list.
 - `inbox` is a valid list name and shows floating todos not in any named list.
 - Writes a session mapping (`~/.bliss2/session.txt`) of position numbers to UUIDs. This mapping is the basis for `bliss done` and `bliss move`.
@@ -83,6 +85,8 @@ Displays todos in the current context with position numbers — the full, unfilt
 bliss list
 bliss list today
 bliss list inbox
+bliss list --personal
+bliss list --personal inbox
 ```
 
 #### `bliss done <number|uuid>`
@@ -257,7 +261,9 @@ A todo with no scene tag is always shown, regardless of the active scene. Taggin
 
 ### `bliss show` vs `bliss list`
 
-`bliss list` is the complete, unfiltered view — all todos, regardless of time or context mode. `bliss show` is the filtered, actionable view: what is relevant right now, given where you are and when it is. The split gives each command a single clear purpose. As features like time deferral are added, they affect `bliss show` only — `bliss list` remains a stable, predictable full dump.
+`bliss list` is the complete, unfiltered view of the current scope — all todos in the current context, regardless of time. `bliss show` is the filtered, actionable view: what is relevant right now, given where you are and when it is. The split gives each command a single clear purpose. As features like time deferral are added, they affect `bliss show` only — `bliss list` remains a stable, predictable dump.
+
+`bliss list` is scoped to the current context by default. Personal todos are cross-context and appear only when explicitly requested (`--personal`) or via `bliss show`, which decides whether to surface them based on scene. This keeps `bliss list` focused and avoids mixing unrelated personal items into a project view.
 
 ### Strict separation of interactive and non-interactive commands
 

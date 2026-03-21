@@ -234,6 +234,7 @@ func addCmd() *cobra.Command {
 // listCmd implements `bliss list [list-name]`
 func listCmd() *cobra.Command {
 	var all bool
+	var personal bool
 
 	cmd := &cobra.Command{
 		Use:   "list [list-name]",
@@ -262,14 +263,17 @@ func listCmd() *cobra.Command {
 				filterList = args[0]
 			}
 
+			// listCtxUUID is "" for personal mode (--personal or outside a context).
+			listCtxUUID := contextUUID
+			if personal || contextUUID == "" {
+				listCtxUUID = ""
+			}
+
 			session := make(map[int]string)
 			pos := 1
 
 			readTodo := func(uuid string) (todo.Todo, error) {
-				return s.ReadTodo(contextUUID, uuid)
-			}
-			readTodoAny := func(uuid string) (todo.Todo, error) {
-				return s.FindTodo(uuid)
+				return s.ReadTodo(listCtxUUID, uuid)
 			}
 
 			first := true
@@ -304,7 +308,7 @@ func listCmd() *cobra.Command {
 				}
 			}
 
-			inboxTodos, err := getInboxTodos(s, contextUUID)
+			inboxTodos, err := getInboxTodos(s, listCtxUUID)
 			if err != nil {
 				return err
 			}
@@ -323,7 +327,7 @@ func listCmd() *cobra.Command {
 			}
 
 			if filterList != "" {
-				l, err := s.ReadList(contextUUID, filterList)
+				l, err := s.ReadList(listCtxUUID, filterList)
 				if err != nil {
 					return fmt.Errorf("reading list %q: %w", filterList, err)
 				}
@@ -331,13 +335,13 @@ func listCmd() *cobra.Command {
 				return s.WriteSession(session)
 			}
 
-			// No filter: context lists, then personal lists, then inbox.
-			listNames, err := s.ListNames(contextUUID)
+			// No filter: show context lists or personal lists, never both.
+			listNames, err := s.ListNames(listCtxUUID)
 			if err != nil {
 				return err
 			}
 			for _, name := range listNames {
-				l, err := s.ReadList(contextUUID, name)
+				l, err := s.ReadList(listCtxUUID, name)
 				if err != nil {
 					continue
 				}
@@ -345,22 +349,6 @@ func listCmd() *cobra.Command {
 					continue
 				}
 				printList(name, l, readTodo)
-			}
-			if contextUUID != "" {
-				personalNames, err := s.PersonalListNames()
-				if err != nil {
-					return err
-				}
-				for _, name := range personalNames {
-					l, err := s.ReadList("", name)
-					if err != nil {
-						continue
-					}
-					if len(list.AllUUIDs(l)) == 0 {
-						continue
-					}
-					printList(name, l, readTodoAny)
-				}
 			}
 			if len(inboxTodos) > 0 {
 				printList("inbox", inboxList(), readTodo)
@@ -375,6 +363,7 @@ func listCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&all, "all", false, "Show todos from all contexts")
+	cmd.Flags().BoolVarP(&personal, "personal", "p", false, "Show personal lists")
 	return cmd
 }
 
