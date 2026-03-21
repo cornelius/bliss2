@@ -26,6 +26,9 @@ type Store struct {
 }
 
 func storePath() (string, error) {
+	if p := os.Getenv("BLISS_STORE"); p != "" {
+		return p, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("finding home directory: %w", err)
@@ -100,6 +103,8 @@ func initGitRepo(path string) (*git.Repository, error) {
 	}
 	return repo, nil
 }
+
+func (s *Store) Path() string { return s.path }
 
 func (s *Store) ContextDir(uuid string) string {
 	return filepath.Join(s.path, "contexts", uuid)
@@ -506,13 +511,17 @@ func (s *Store) ReadHistory(contextUUID string) ([]HistoryEntry, error) {
 		if err != nil {
 			return nil
 		}
-		return files.ForEach(func(f *object.File) error {
+		innerErr := files.ForEach(func(f *object.File) error {
 			if strings.HasPrefix(f.Name, prefix) {
 				entries = append(entries, HistoryEntry{Time: c.Author.When, Message: c.Message})
 				return fmt.Errorf("stop") // sentinel to stop inner iteration
 			}
 			return nil
 		})
+		if innerErr != nil && innerErr.Error() != "stop" {
+			return innerErr
+		}
+		return nil
 	})
 	// Ignore the sentinel error used to break inner iteration.
 	if err != nil && err.Error() != "stop" {

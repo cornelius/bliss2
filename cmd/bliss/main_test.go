@@ -318,14 +318,18 @@ func TestInit_storesPath(t *testing.T) {
 	if _, err := bliss(t, proj, env, "init"); err != nil {
 		t.Fatalf("init: %v", err)
 	}
+	// Add a todo so the context appears in status (empty contexts are hidden).
+	if _, err := bliss(t, proj, env, "add", "a task"); err != nil {
+		t.Fatalf("add: %v", err)
+	}
 
-	// status should show the path
+	// status should show the context path (home-shortened to ~/myproject).
 	out, err := bliss(t, proj, env, "status")
 	if err != nil {
 		t.Fatalf("status: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, proj) {
-		t.Errorf("status output %q does not contain project path %q", out, proj)
+	if !strings.Contains(out, "myproject") {
+		t.Errorf("status output %q does not contain project path", out)
 	}
 }
 
@@ -340,8 +344,8 @@ func TestStatus_personalMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("status in personal mode: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "personal mode") {
-		t.Errorf("output %q missing 'personal mode'", out)
+	if !strings.Contains(out, "Personal:") {
+		t.Errorf("output %q missing 'Personal:' label", out)
 	}
 	if !strings.Contains(out, "inbox") {
 		t.Errorf("output %q missing inbox count", out)
@@ -366,7 +370,7 @@ func TestStatus_insideContext(t *testing.T) {
 	if !strings.Contains(out, "My Project") {
 		t.Errorf("output %q missing context name", out)
 	}
-	if !strings.Contains(out, proj) {
+	if !strings.Contains(out, "myproject") {
 		t.Errorf("output %q missing context path", out)
 	}
 	if !strings.Contains(out, "inbox") {

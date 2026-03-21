@@ -18,6 +18,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"sort"
+	"time"
 )
 
 var (
@@ -26,6 +28,18 @@ var (
 	styleMuted       = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	styleActive      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
 	styleSectionHead = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+)
+
+// Status command styles.
+var (
+	stTitle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#06B6D4"))
+	stDate     = lipgloss.NewStyle().Foreground(lipgloss.Color("#64748B"))
+	stCtxLabel = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#E2E8F0"))
+	stCnt      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#CBD5E1"))
+	stOtherCtx = lipgloss.NewStyle().Foreground(lipgloss.Color("#38BDF8"))
+	stPersonal = lipgloss.NewStyle().Foreground(lipgloss.Color("#C084FC"))
+	stPath     = lipgloss.NewStyle().Foreground(lipgloss.Color("#475569"))
+	stGitLine  = lipgloss.NewStyle().Foreground(lipgloss.Color("#64748B"))
 )
 
 func main() {
@@ -331,19 +345,21 @@ func listCmd() *cobra.Command {
 				}
 				printList(name, l, readTodo)
 			}
-			personalNames, err := s.PersonalListNames()
-			if err != nil {
-				return err
-			}
-			for _, name := range personalNames {
-				l, err := s.ReadList("", name)
+			if contextUUID != "" {
+				personalNames, err := s.PersonalListNames()
 				if err != nil {
-					continue
+					return err
 				}
-				if len(list.AllUUIDs(l)) == 0 {
-					continue
+				for _, name := range personalNames {
+					l, err := s.ReadList("", name)
+					if err != nil {
+						continue
+					}
+					if len(list.AllUUIDs(l)) == 0 {
+						continue
+					}
+					printList(name, l, readTodoAny)
 				}
-				printList(name, l, readTodoAny)
 			}
 			if len(inboxTodos) > 0 {
 				printList("inbox", inboxList(), readTodo)
@@ -746,80 +762,61 @@ func statusCmd() *cobra.Command {
 			}
 
 			activeUUID, _, _ := blisscontext.FindContext(cwd)
+			personalMode := activeUUID == ""
 
 			s, err := store.Open()
 			if err != nil {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			// --- Current context or personal mode ---
-			if activeUUID == "" {
-				fmt.Println(styleActive.Render("  personal mode"))
-			} else {
-				name, path, _ := s.ReadContextMeta(activeUUID)
-				fmt.Printf("%s  %s\n", styleActive.Render("* "+name), styleMuted.Render(path))
-			}
+			// ── header ───────────────────────────────────────────────────
+			date := stDate.Render(time.Now().Format("Mon Jan 02, 2006"))
+			fmt.Println(stTitle.Render("bliss status") + "  " + date)
+			fmt.Println()
 
-			// Per-list breakdown for current context / personal mode.
-			counts := statusListCounts(s, activeUUID)
-			for _, lc := range counts {
-				fmt.Printf("  %-12s %d\n", lc.name, lc.count)
-			}
-
-			// --- Other contexts ---
+			// ── contexts ─────────────────────────────────────────────────
 			contextUUIDs, err := s.ListContextUUIDs()
 			if err != nil {
 				return err
 			}
-			printedOtherHeader := false
+			type ctxRow struct {
+				uuid   string
+				name   string
+				path   string
+				active bool
+			}
+			var rows []ctxRow
 			for _, uuid := range contextUUIDs {
-				if uuid == activeUUID {
+				name, path, _ := s.ReadContextMeta(uuid)
+				rows = append(rows, ctxRow{uuid, name, path, uuid == activeUUID})
+			}
+			sort.Slice(rows, func(i, j int) bool { return rows[i].name < rows[j].name })
+			for _, r := range rows {
+				counts := statusListCounts(s, r.uuid)
+				if len(counts) == 0 {
 					continue
 				}
-				if !printedOtherHeader {
-					fmt.Println()
-					printedOtherHeader = true
-				}
-				name, path, _ := s.ReadContextMeta(uuid)
-				pathDisplay := styleMuted.Render(path)
-				if path != "" && !isContextPathFresh(path, uuid) {
-					pathDisplay = styleMuted.Render("(stale path)")
-				}
-				compact := compactListSummary(s, uuid)
-				fmt.Printf("  %-24s  %s  %s\n", name, pathDisplay, styleMuted.Render(compact))
+				fmt.Println(renderContextRow(r.active, r.name, r.path, counts))
 			}
 
-			// --- Personal section (when inside a context) ---
-			if activeUUID != "" {
-				personalCounts := statusListCounts(s, "")
-				if len(personalCounts) > 0 {
-					fmt.Println()
-					fmt.Println(styleMuted.Render("  personal"))
-					parts := []string{}
-					for _, lc := range personalCounts {
-						parts = append(parts, fmt.Sprintf("%s %d", lc.name, lc.count))
-					}
-					fmt.Printf("  %s\n", strings.Join(parts, "  "))
-				}
+			// ── personal ─────────────────────────────────────────────────
+			personalCounts := statusListCounts(s, "")
+			if len(personalCounts) > 0 {
+				fmt.Println(renderPersonalRow(personalMode, personalCounts))
 			}
 
-			// --- Git sync ---
+			// ── store / git ───────────────────────────────────────────────
 			fmt.Println()
 			remote, ahead, behind, _ := s.GitSyncStatus()
-			if remote == "" {
-				fmt.Println(styleMuted.Render("  store  no remote"))
-			} else if ahead == 0 && behind == 0 {
-				fmt.Printf("%s\n", styleMuted.Render(fmt.Sprintf("  store  synced  (%s)", remote)))
-			} else {
-				var parts []string
-				if ahead > 0 {
-					parts = append(parts, fmt.Sprintf("↑%d ahead", ahead))
-				}
-				if behind > 0 {
-					parts = append(parts, fmt.Sprintf("↓%d behind", behind))
-				}
-				fmt.Printf("%s\n", styleMuted.Render(fmt.Sprintf("  store  %s  %s", strings.Join(parts, "  "), remote)))
+			storeLabel := stGitLine.Render(fmt.Sprintf("%-8s", "Store:"))
+			remoteLabel := stGitLine.Render(fmt.Sprintf("%-8s", "Remote:"))
+			syncLabel := stGitLine.Render(fmt.Sprintf("%-8s", "Sync:"))
+			fmt.Println(storeLabel + s.Path())
+			if remote != "" {
+				fmt.Println(remoteLabel + remote)
 			}
+			syncVal := renderSyncStatus(remote, ahead, behind)
+			fmt.Println(syncLabel + syncVal)
 
 			return nil
 		},
@@ -867,15 +864,6 @@ func statusInboxCount(s *store.Store, contextUUID string) int {
 		return 0
 	}
 	return len(todos)
-}
-
-func compactListSummary(s *store.Store, contextUUID string) string {
-	counts := statusListCounts(s, contextUUID)
-	parts := make([]string, 0, len(counts))
-	for _, lc := range counts {
-		parts = append(parts, fmt.Sprintf("%s %d", lc.name, lc.count))
-	}
-	return strings.Join(parts, "  ")
 }
 
 // isContextPathFresh checks whether a path still contains a .bliss-context pointing to uuid.
@@ -929,4 +917,149 @@ func historyCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&all, "all", false, "Show history across all contexts")
 	return cmd
+}
+
+// listLabelStyle returns a color style for a known list name.
+func listLabelStyle(name string) lipgloss.Style {
+	switch name {
+	case "today":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#FBBF24"))
+	case "this-week":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#60A5FA"))
+	case "next-week":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#93C5FD"))
+	case "later":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#64748B"))
+	case "bugs":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#F87171"))
+	case "inbox":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#A78BFA"))
+	case "errands":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#2DD4BF"))
+	case "someday":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#FB7185"))
+	default:
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#94A3B8"))
+	}
+}
+
+// sortedCounts returns counts in a semantic display order: today → this-week →
+// next-week → later → custom lists → bugs → inbox.
+func sortedCounts(counts []listCount) []listCount {
+	priority := func(name string) int {
+		switch name {
+		case "today":
+			return 0
+		case "this-week":
+			return 1
+		case "next-week":
+			return 2
+		case "later":
+			return 3
+		case "bugs":
+			return 5
+		case "inbox":
+			return 9
+		default:
+			return 4 // custom lists: after later, before bugs
+		}
+	}
+	out := make([]listCount, len(counts))
+	copy(out, counts)
+	sort.Slice(out, func(i, j int) bool {
+		pi, pj := priority(out[i].name), priority(out[j].name)
+		if pi != pj {
+			return pi < pj
+		}
+		return out[i].name < out[j].name
+	})
+	return out
+}
+
+// shortenHomePath replaces the home directory prefix in path with "~".
+func shortenHomePath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
+	}
+	return path
+}
+
+// renderCounts formats list counts as "name: count  name: count  ...".
+func renderCounts(counts []listCount) string {
+	counts = sortedCounts(counts)
+	var parts []string
+	for _, lc := range counts {
+		label := listLabelStyle(lc.name).Render(lc.name + ":")
+		count := stCnt.Render(strconv.Itoa(lc.count))
+		parts = append(parts, label+" "+count)
+	}
+	return strings.Join(parts, "  ")
+}
+
+// renderContextRow renders one context line in the status output.
+//
+// Column layout: [12 label+indicator][10 name][22 path][list data]
+func renderContextRow(active bool, name, path string, counts []listCount) string {
+	// Label + indicator column (12 chars visual)
+	var prefix string
+	if active {
+		prefix = stDate.Render("Context:") + "  " + stTitle.Render(">") + " "
+	} else {
+		prefix = stDate.Render("Context:") + "    "
+	}
+
+	// Name column (10 chars)
+	nameStr := fmt.Sprintf("%-10s", name)
+	var nameStyled string
+	if active {
+		nameStyled = stCtxLabel.Render(nameStr)
+	} else {
+		nameStyled = stOtherCtx.Render(nameStr)
+	}
+
+	// Path column (20 chars, home-shortened, truncated if needed) + 2-char separator.
+	// Total path+separator = 22 chars, matching the personal row blank span.
+	const pathWidth = 20
+	short := shortenHomePath(path)
+	if len(short) > pathWidth {
+		short = short[:pathWidth-1] + "…"
+	}
+	pathStyled := stPath.Render(fmt.Sprintf("%-*s", pathWidth, short))
+
+	return prefix + nameStyled + pathStyled + "  " + renderCounts(counts)
+}
+
+// renderPersonalRow renders the personal todos line aligned with context rows.
+func renderPersonalRow(active bool, counts []listCount) string {
+	// Label + indicator column (12 chars visual)
+	var prefix string
+	if active {
+		prefix = stPersonal.Render("Personal:") + " " + stTitle.Render(">") + " "
+	} else {
+		prefix = stPersonal.Render("Personal:") + "   "
+	}
+	// Name + path columns are blank (10 + 22 = 32 spaces)
+	return prefix + strings.Repeat(" ", 32) + renderCounts(counts)
+}
+
+// renderSyncStatus formats the sync state value for the Sync: line.
+func renderSyncStatus(remote string, ahead, behind int) string {
+	if remote == "" {
+		return stGitLine.Render("no remote")
+	}
+	if ahead == 0 && behind == 0 {
+		return stGitLine.Render("synced")
+	}
+	var parts []string
+	if ahead > 0 {
+		parts = append(parts, fmt.Sprintf("↑%d ahead", ahead))
+	}
+	if behind > 0 {
+		parts = append(parts, fmt.Sprintf("↓%d behind", behind))
+	}
+	return stGitLine.Render(strings.Join(parts, "  "))
 }
