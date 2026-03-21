@@ -26,7 +26,6 @@ personal todos. The difference is in filtering and default visibility:
 
 ## Must always appear
 
-- Header line: `bliss show` label + context/path info (or "Personal" if no context)
 - Named lists in semantic order, labeled with list names
 - Position numbers on every todo (same session mapping as `bliss list`)
 - "(no todos)" if there is truly nothing to show
@@ -44,7 +43,6 @@ personal todos. The difference is in filtering and default visibility:
 1. `bliss show` — inside a context: context lists only (inbox hidden unless non-empty)
 2. `bliss show` — outside any context (personal mode): personal lists only (inbox hidden unless non-empty)
 3. `bliss show <list-name>` — shows only the named list (context if in context, else personal)
-4. `bliss show --personal` — shows only personal lists regardless of context
 
 ## Decisions
 

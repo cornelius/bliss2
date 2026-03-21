@@ -78,6 +78,7 @@ Displays todos with position numbers — the full, unfiltered view.
 - `--personal/-p`: shows personal lists regardless of context. Can be combined with a list name.
 - With a list name: shows only that list.
 - `inbox` is a valid list name and shows floating todos not in any named list.
+- `--all`: shows all contexts and personal lists in one view, with no position numbers. Spans multiple contexts so position numbers are not meaningful.
 - Writes a session mapping (`~/.bliss2/session.txt`) of position numbers to UUIDs. This mapping is the basis for `bliss done` and `bliss move`.
 - Position numbers are **stable within a session**: completing todo 5 does not shift todo 6 to position 5. The session is replaced only when `bliss list` is run again. To complete multiple todos, use each one's original position number from the last `bliss list` output.
 
@@ -87,6 +88,7 @@ bliss list today
 bliss list inbox
 bliss list --personal
 bliss list --personal inbox
+bliss list --all
 ```
 
 #### `bliss done <number|uuid>`
@@ -160,26 +162,30 @@ bliss scene home
 bliss scene --clear
 ```
 
-#### `bliss contexts`
+#### `bliss status`
 
-Lists all contexts in the store.
+System overview: all contexts with their list counts, plus store and sync info.
 
-- Marks the active context (resolved from the current directory).
-- Shows the todo count for each context.
+- Shows all contexts; marks the active context (resolved from the current directory) with `>`.
+- Shows list counts per context in semantic order.
+- Shows Personal as its own row.
+- Shows the local store path, configured remote URL, and sync state (ahead/behind/synced).
 
 ```
-bliss contexts
+bliss status
 ```
 
-#### `bliss history [--all]`
+#### `bliss history [--personal] [--all]`
 
 Shows the change history for the current context.
 
-- Without flags: shows git log entries that touch the current context.
-- `--all` shows the full store history across all contexts.
+- Without flags: shows commits that touch the current context (or personal, if outside any context).
+- `--personal`: shows only personal commits, regardless of context.
+- `--all`: shows the full store history across all contexts, with a context label column.
 
 ```
 bliss history
+bliss history --personal
 bliss history --all
 ```
 
