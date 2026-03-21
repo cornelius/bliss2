@@ -18,5 +18,5 @@ later
   8  Clean up unused S3 buckets
 
 inbox
-  9  Bump base Docker images to Debian bookworm
- 10  Check Dependabot alerts on infra repo
+  9  Check Dependabot alerts on infra repo
+ 10  Bump base Docker images to Debian bookworm

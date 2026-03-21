@@ -27,8 +27,8 @@ bugs
   Race condition in concurrent token refresh
 
 inbox
-  Check in with DevOps about K8s quota increase
   Reply to sec audit findings email
+  Check in with DevOps about K8s quota increase
 
 Context: frontend  Path: /tmp/bliss-test/frontend
 
@@ -53,8 +53,8 @@ bugs
   Chart tooltip misaligned on retina displays
 
 inbox
-  Sync with PM on Q2 roadmap priorities
   Ask design for updated error state illustrations
+  Sync with PM on Q2 roadmap priorities
 
 Context: infra  Path: /tmp/bliss-test/infra
 
@@ -76,8 +76,8 @@ later
   Clean up unused S3 buckets
 
 inbox
-  Bump base Docker images to Debian bookworm
   Check Dependabot alerts on infra repo
+  Bump base Docker images to Debian bookworm
 
 Context: mobile  Path: /tmp/bliss-test/mobile
 
@@ -103,8 +103,8 @@ bugs
   Keyboard covers input on older iPhones
 
 inbox
-  Reply to App Store review about login issue
   Check analytics drop on v2.3 release
+  Reply to App Store review about login issue
 
 Personal
 

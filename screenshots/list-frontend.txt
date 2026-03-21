@@ -21,5 +21,5 @@ bugs
   9  Chart tooltip misaligned on retina displays
 
 inbox
- 10  Sync with PM on Q2 roadmap priorities
- 11  Ask design for updated error state illustrations
+ 10  Ask design for updated error state illustrations
+ 11  Sync with PM on Q2 roadmap priorities

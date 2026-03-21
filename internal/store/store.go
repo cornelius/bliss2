@@ -484,14 +484,23 @@ func (s *Store) Commit(message string) error {
 }
 
 // HistoryEntry is one entry from the git log.
+// ContextUUID identifies which context the commit belongs to, derived from the
+// store paths it touched: contexts/<uuid>/… → that context, todos/… → personal
+// (ContextUUID == "" and Personal == true), anything else → neither.
 type HistoryEntry struct {
-	Time    time.Time
-	Message string
+	Time        time.Time
+	Message     string
+	ContextUUID string // non-empty when commit touches a specific context
+	Personal    bool   // true when commit touches personal todos/lists
 }
 
-// ReadHistory returns git log entries, optionally filtered to a single context.
-// If contextUUID is empty, all entries are returned.
-func (s *Store) ReadHistory(contextUUID string) ([]HistoryEntry, error) {
+const personalTodosPrefix = "todos" + string(filepath.Separator)
+const contextsPrefix = "contexts" + string(filepath.Separator)
+
+// ReadHistory returns all git log entries with context attribution derived
+// from the store paths each commit touched. Callers filter by ContextUUID or
+// Personal as needed.
+func (s *Store) ReadHistory() ([]HistoryEntry, error) {
 	iter, err := s.repo.Log(&git.LogOptions{Order: git.LogOrderCommitterTime})
 	if err != nil {
 		return nil, fmt.Errorf("reading git log: %w", err)
@@ -499,31 +508,34 @@ func (s *Store) ReadHistory(contextUUID string) ([]HistoryEntry, error) {
 	defer iter.Close()
 
 	var entries []HistoryEntry
-	prefix := filepath.Join("contexts", contextUUID) + string(filepath.Separator)
 
 	err = iter.ForEach(func(c *object.Commit) error {
-		if contextUUID == "" {
-			entries = append(entries, HistoryEntry{Time: c.Author.When, Message: c.Message})
-			return nil
-		}
-		// Filter to commits touching this context's directory.
-		files, err := c.Files()
+		entry := HistoryEntry{Time: c.Author.When, Message: c.Message}
+
+		// Use Stats() (changed files only) rather than Files() (whole tree),
+		// so attribution reflects what the commit actually touched.
+		stats, err := c.Stats()
 		if err != nil {
+			entries = append(entries, entry)
 			return nil
 		}
-		innerErr := files.ForEach(func(f *object.File) error {
-			if strings.HasPrefix(f.Name, prefix) {
-				entries = append(entries, HistoryEntry{Time: c.Author.When, Message: c.Message})
-				return fmt.Errorf("stop") // sentinel to stop inner iteration
+
+		for _, stat := range stats {
+			if strings.HasPrefix(stat.Name, contextsPrefix) {
+				rest := stat.Name[len(contextsPrefix):]
+				if idx := strings.Index(rest, string(filepath.Separator)); idx > 0 {
+					entry.ContextUUID = rest[:idx]
+					break
+				}
+			} else if strings.HasPrefix(stat.Name, personalTodosPrefix) {
+				entry.Personal = true
+				break
 			}
-			return nil
-		})
-		if innerErr != nil && innerErr.Error() != "stop" {
-			return innerErr
 		}
+
+		entries = append(entries, entry)
 		return nil
 	})
-	// Ignore the sentinel error used to break inner iteration.
 	if err != nil && err.Error() != "stop" {
 		return nil, err
 	}

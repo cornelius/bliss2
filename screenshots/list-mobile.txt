@@ -22,5 +22,5 @@ bugs
  10  Keyboard covers input on older iPhones
 
 inbox
- 11  Reply to App Store review about login issue
- 12  Check analytics drop on v2.3 release
+ 11  Check analytics drop on v2.3 release
+ 12  Reply to App Store review about login issue

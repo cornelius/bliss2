@@ -25,5 +25,5 @@ bugs
  12  Race condition in concurrent token refresh
 
 inbox
- 13  Check in with DevOps about K8s quota increase
- 14  Reply to sec audit findings email
+ 13  Reply to sec audit findings email
+ 14  Check in with DevOps about K8s quota increase

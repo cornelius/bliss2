@@ -125,7 +125,7 @@ func TestAdd_showsListInOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add: %v", err)
 	}
-	if !strings.Contains(out, "[today]") {
+	if !strings.Contains(out, "today") {
 		t.Errorf("output %q should mention target list", out)
 	}
 	if !strings.Contains(out, "Feed the penguins") {
@@ -189,7 +189,7 @@ func TestAdd_stdinTitleWithList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add via stdin: %v", err)
 	}
-	if !strings.Contains(out, "[today]") {
+	if !strings.Contains(out, "today") {
 		t.Errorf("output %q should mention target list", out)
 	}
 	if !strings.Contains(out, title) {
@@ -226,7 +226,7 @@ func TestPersonalMode_addToList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add to list in personal mode: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "[today]") {
+	if !strings.Contains(out, "today") {
 		t.Errorf("output %q missing list name", out)
 	}
 
@@ -266,7 +266,7 @@ func TestPersonalMode_move(t *testing.T) {
 	if err != nil {
 		t.Fatalf("move in personal mode: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "Moved to [today]") {
+	if !strings.Contains(out, "Moved to") || !strings.Contains(out, "today") {
 		t.Errorf("move output %q missing confirmation", out)
 	}
 }

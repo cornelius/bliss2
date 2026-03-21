@@ -132,7 +132,10 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("committing: %w", err)
 			}
 
-			fmt.Printf("Initialized bliss context: %s (%s)\n", name, contextUUID)
+			short := shortenHomePath(cwd)
+			fmt.Println(stMuted.Render("Initialized") + "  " +
+				stMuted.Render("Context:") + " " + stBold.Render(name) +
+				"  " + stMuted.Render("Path:") + " " + stPath.Render(short))
 			return nil
 		},
 	}
@@ -214,9 +217,9 @@ func addCmd() *cobra.Command {
 			}
 
 			if listName != "" {
-				fmt.Printf("Added to [%s]: %s\n", listName, title)
+				fmt.Println(stMuted.Render("Added to") + " " + stBold.Render(listName) + stMuted.Render(":") + " " + title)
 			} else {
-				fmt.Printf("Added: %s\n", title)
+				fmt.Println(stMuted.Render("Added:") + " " + title)
 			}
 			return nil
 		},
@@ -533,7 +536,7 @@ func doneCmd() *cobra.Command {
 				return fmt.Errorf("committing: %w", err)
 			}
 
-			fmt.Printf("Done: %s\n", t.Title)
+			fmt.Println(stMuted.Render("Done:") + " " + t.Title)
 			return nil
 		},
 	}
@@ -591,7 +594,7 @@ func moveCmd() *cobra.Command {
 				return fmt.Errorf("committing: %w", err)
 			}
 
-			fmt.Printf("Moved to [%s]: %s\n", listName, t.Title)
+			fmt.Println(stMuted.Render("Moved to") + " " + stBold.Render(listName) + stMuted.Render(":") + " " + t.Title)
 			return nil
 		},
 	}
@@ -951,6 +954,7 @@ func isContextPathFresh(path, uuid string) bool {
 
 func historyCmd() *cobra.Command {
 	var all bool
+	var personal bool
 
 	cmd := &cobra.Command{
 		Use:   "history",
@@ -962,36 +966,99 @@ func historyCmd() *cobra.Command {
 				return err
 			}
 
-			contextUUID := ""
-			if !all {
-				cwd, err := os.Getwd()
-				if err != nil {
-					return fmt.Errorf("getting current directory: %w", err)
-				}
-				contextUUID, _, _ = blisscontext.FindContext(cwd)
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current directory: %w", err)
 			}
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
-			entries, err := s.ReadHistory(contextUUID)
+			// ── header ────────────────────────────────────────────────────
+			date := stMuted.Render(time.Now().Format("Mon Jan 02, 2006"))
+			if all {
+				fmt.Println(stTitle.Render("bliss history --all") + "  " + date)
+			} else if personal || contextUUID == "" {
+				fmt.Println(stTitle.Render("bliss history") + "  " + stMuted.Render("Personal") + "  " + date)
+			} else {
+				ctxName, ctxPath, _ := s.ReadContextMeta(contextUUID)
+				fmt.Println(stTitle.Render("bliss history") + "  " +
+					stMuted.Render("Context:") + " " + stBold.Render(ctxName) +
+					"  " + stMuted.Render("Path:") + " " + stPath.Render(shortenHomePath(ctxPath)) +
+					"  " + date)
+			}
+			fmt.Println()
+
+			// ── entries ───────────────────────────────────────────────────
+			entries, err := s.ReadHistory()
 			if err != nil {
 				return err
 			}
 
-			if len(entries) == 0 {
-				fmt.Println("(no history)")
+			// Filter entries to the relevant scope.
+			var filtered []store.HistoryEntry
+			for _, e := range entries {
+				switch {
+				case all:
+					filtered = append(filtered, e)
+				case personal || contextUUID == "":
+					if e.Personal {
+						filtered = append(filtered, e)
+					}
+				default:
+					if e.ContextUUID == contextUUID {
+						filtered = append(filtered, e)
+					}
+				}
+			}
+
+			if len(filtered) == 0 {
+				fmt.Println(stMuted.Render("(no history)"))
 				return nil
 			}
 
-			for _, e := range entries {
-				msg := strings.TrimPrefix(strings.TrimSpace(e.Message), "bliss: ")
-				fmt.Printf("  %s  %s\n", styleMuted.Render(e.Time.Format("Jan 02 15:04")), msg)
+			// For --all, build a context name lookup and compute label width.
+			var ctxNames map[string]string
+			labelWidth := 0
+			if all {
+				ctxNames = make(map[string]string)
+				contextUUIDs, _ := s.ListContextUUIDs()
+				for _, uuid := range contextUUIDs {
+					name, _, _ := s.ReadContextMeta(uuid)
+					ctxNames[uuid] = name
+					if len(name) > labelWidth {
+						labelWidth = len(name)
+					}
+				}
+				if labelWidth < len("personal") {
+					labelWidth = len("personal")
+				}
 			}
+
+			for _, e := range filtered {
+				ts := stMuted.Render(e.Time.Format("2006-01-02 15:04"))
+				msg := strings.TrimPrefix(strings.TrimSpace(e.Message), "bliss: ")
+				if all {
+					var label string
+					if e.ContextUUID != "" {
+						label = ctxNames[e.ContextUUID]
+					} else if e.Personal {
+						label = "personal"
+					}
+					labelStyled := stMuted.Render(fmt.Sprintf("%-*s", labelWidth, label))
+					fmt.Printf("%s  %s  %s\n", ts, labelStyled, msg)
+				} else {
+					fmt.Printf("%s  %s\n", ts, msg)
+				}
+			}
+
 			return nil
 		},
 	}
 
-	cmd.Flags().BoolVar(&all, "all", false, "Show history across all contexts")
+	cmd.Flags().BoolVar(&all, "all", false, "Show history across all contexts and personal")
+	cmd.Flags().BoolVarP(&personal, "personal", "p", false, "Show personal history")
 	return cmd
 }
+
 
 // listLabelStyle returns a muted grey style for list name labels.
 // List names are structural labels, not data — they should not draw attention.

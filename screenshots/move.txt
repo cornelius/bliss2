@@ -1,1 +1,1 @@
-Moved to [later]: Implement JWT refresh token rotation
+Moved to later: Implement JWT refresh token rotation
