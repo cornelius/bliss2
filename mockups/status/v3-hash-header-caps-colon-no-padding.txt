@@ -1,0 +1,13 @@
+# concepts: # for main title, capitalize labels (title case), colon after labels, no left padding
+
+# bliss status  Sat Mar 21
+
+Context: > api       ~/projects/api       today: 2  this-week: 3  bugs: 3  inbox: 2
+Context:   frontend  ~/projects/frontend  design: 1  today: 2  this-week: 2  next-week: 1  inbox: 2
+Context:   infra     ~/projects/infra     on-call: 1  today: 2  this-week: 2  later: 2
+Context:   mobile    ~/projects/mobile    today: 2  release: 3  bugs: 3  inbox: 2
+Personal:            –                   errands: 3  someday: 4  inbox: 2
+
+Store:  /home/user/.bliss2
+Remote: git@github.com:user/bliss-store.git
+Sync:   ↑2 ahead

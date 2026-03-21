@@ -1,0 +1,38 @@
+  bugs
+   1  Fix CORS headers on OPTIONS preflight
+   2  Session cookie not expiring correctly
+      ── nice to fix
+   3  Race condition in concurrent token refresh
+
+  later
+   4  Migrate from REST to GraphQL (spike)
+   5  Evaluate Temporal for background jobs
+
+  next-week
+   6  Profile slow SQL queries in production
+   7  Document deployment runbook
+
+  this-week
+   8  Write OpenAPI spec for auth endpoints
+   9  Set up rate limiting middleware
+      ── backlog
+  10  Add integration tests for login flow
+
+  today
+  11  Implement JWT refresh token rotation
+  12  Fix /users endpoint returning 500 on empty DB
+
+  errands
+  13  Renew car insurance
+  14  Pick up prescription
+  15  Book dentist appointment
+
+  someday
+  16  Read «Shape Up»
+  17  Learn Nix
+  18  Try out Ghostty terminal
+  19  Set up home NAS with ZFS
+
+  inbox
+  20  Check in with DevOps about K8s quota increase
+  21  Reply to sec audit findings email

@@ -1,0 +1,65 @@
+  api
+    Implement JWT refresh token rotation
+    Check in with DevOps about K8s quota increase
+    Migrate from REST to GraphQL (spike)
+    Set up rate limiting middleware
+    Add integration tests for login flow
+    Session cookie not expiring correctly
+    Fix CORS headers on OPTIONS preflight
+    Fix /users endpoint returning 500 on empty DB
+    Write OpenAPI spec for auth endpoints
+    Evaluate Temporal for background jobs
+    Profile slow SQL queries in production
+    Document deployment runbook
+    Race condition in concurrent token refresh
+    Reply to sec audit findings email
+
+  mobile
+    Push notification not delivered on Android 14
+    Fix crash on deep link when app is backgrounded
+    Investigate memory leak in image cache
+    Reply to App Store review about login issue
+    Submit build to TestFlight
+    Keyboard covers input on older iPhones
+    Reduce cold start time below 800 ms
+    Port to iPad layout
+    Implement biometric auth fallback
+    Check analytics drop on v2.3 release
+    Write UI tests for checkout flow
+    Add offline mode for core screens
+
+  frontend
+    Migrate component library to shadcn/ui
+    Add dark mode toggle to settings page
+    Fix mobile nav overflow on small screens
+    Write Storybook stories for Button and Input
+    Lazy-load dashboard charts
+    Ask design for updated error state illustrations
+    Sync with PM on Q2 roadmap priorities
+    Audit bundle size — target <200 kB gzipped
+    A/B test new onboarding flow
+    Dropdown closes on outside click in Safari
+    Chart tooltip misaligned on retina displays
+
+  infra
+    Upgrade Kubernetes to 1.30
+    Write runbook for on-call rotation
+    Migrate CI to self-hosted runners
+    Set up Loki log aggregation
+    Check Dependabot alerts on infra repo
+    Bump base Docker images to Debian bookworm
+    Rotate expiring TLS certificates
+    Clean up unused S3 buckets
+    Set up cost alerting in AWS
+    Evaluate Pulumi vs Terraform for new infra
+
+  personal
+    Set up home NAS with ZFS
+    Read «Shape Up»
+    Book dentist appointment
+    Pick up prescription
+    Renew car insurance
+    Try out Ghostty terminal
+    Call landlord about heating
+    Buy birthday gift for mom
+    Learn Nix

@@ -1,0 +1,1 @@
+Done: Fix CORS headers on OPTIONS preflight

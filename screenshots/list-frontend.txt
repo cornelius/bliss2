@@ -1,0 +1,34 @@
+  bugs
+   1  Dropdown closes on outside click in Safari
+   2  Chart tooltip misaligned on retina displays
+
+  later
+   3  A/B test new onboarding flow
+   4  Audit bundle size — target <200 kB gzipped
+
+  next-week
+   5  Write Storybook stories for Button and Input
+
+  this-week
+   6  Add dark mode toggle to settings page
+      ──
+   7  Lazy-load dashboard charts
+
+  today
+   8  Migrate component library to shadcn/ui
+   9  Fix mobile nav overflow on small screens
+
+  errands
+  10  Renew car insurance
+  11  Pick up prescription
+  12  Book dentist appointment
+
+  someday
+  13  Read «Shape Up»
+  14  Learn Nix
+  15  Try out Ghostty terminal
+  16  Set up home NAS with ZFS
+
+  inbox
+  17  Ask design for updated error state illustrations
+  18  Sync with PM on Q2 roadmap priorities

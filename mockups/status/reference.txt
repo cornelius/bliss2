@@ -1,0 +1,26 @@
+# Reference mockup for implementation — based on v2
+#
+# Column layout (44 chars before list data):
+#   [12] label + indicator  "Context:  > " / "Context:    " / "Personal:   "
+#   [10] name, padded       "api       " / "frontend  " / (spaces for personal)
+#   [22] path, padded       "~/projects/api        " / (spaces for personal)
+#   [∞]  list data          "today: 2  this-week: 3  ..."
+#
+# Date format: Weekday Mon DD, YYYY
+# Active context marked with >, inactive with space.
+# Personal has no name or path — columns are blank, list data aligns.
+# Colon after labels: "Context:", "Personal:", "Store:", "Remote:", "Sync:".
+# Colon after list names: "today: 2", "bugs: 3".
+# List names in list data are not capitalized.
+
+bliss status  Sat Mar 21, 2026
+
+Context:  > api       ~/projects/api        today: 2  this-week: 3  bugs: 3  inbox: 2
+Context:    frontend  ~/projects/frontend   design: 1  today: 2  this-week: 2  next-week: 1  inbox: 2
+Context:    infra     ~/projects/infra      on-call: 1  today: 2  this-week: 2  later: 2
+Context:    mobile    ~/projects/mobile     today: 2  release: 3  bugs: 3  inbox: 2
+Personal:                                   errands: 3  someday: 4  inbox: 2
+
+Store:  /home/user/.bliss2
+Remote: git@github.com:user/bliss-store.git
+Sync:   ↑2 ahead

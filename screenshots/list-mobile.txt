@@ -1,0 +1,35 @@
+  bugs
+   1  Investigate memory leak in image cache
+      ── low priority
+   2  Push notification not delivered on Android 14
+   3  Keyboard covers input on older iPhones
+
+  later
+   4  Port to iPad layout
+
+  next-week
+   5  Reduce cold start time below 800 ms
+   6  Write UI tests for checkout flow
+
+  this-week
+   7  Implement biometric auth fallback
+   8  Add offline mode for core screens
+
+  today
+   9  Fix crash on deep link when app is backgrounded
+  10  Submit build to TestFlight
+
+  errands
+  11  Renew car insurance
+  12  Pick up prescription
+  13  Book dentist appointment
+
+  someday
+  14  Read «Shape Up»
+  15  Learn Nix
+  16  Try out Ghostty terminal
+  17  Set up home NAS with ZFS
+
+  inbox
+  18  Reply to App Store review about login issue
+  19  Check analytics drop on v2.3 release

@@ -1,0 +1,5 @@
+  bugs
+   1  Fix CORS headers on OPTIONS preflight
+   2  Session cookie not expiring correctly
+      ── nice to fix
+   3  Race condition in concurrent token refresh

@@ -1,0 +1,56 @@
+# v1 — header line like status, semantic order, items indented under list names
+#
+# Notes:
+# - "bliss list" header + context name + path: self-contained, consistent with status
+# - List names at column 0, items at column 2 — clear hierarchy
+# - Numbers right-aligned in a 2-char field
+# - Semantic list order: today → this-week → next-week → later → custom → bugs → inbox
+# - Personal lists separated at the bottom with a rule
+# - Blank line between lists for scannability
+
+bliss list  api  /tmp/bliss-test/api
+
+today
+  1  Implement JWT refresh token rotation
+  2  Fix /users endpoint returning 500 on empty DB
+
+this-week
+  3  Write OpenAPI spec for auth endpoints
+  4  Set up rate limiting middleware
+  ── backlog
+  5  Add integration tests for login flow
+
+next-week
+  6  Profile slow SQL queries in production
+  7  Document deployment runbook
+
+later
+  8  Migrate from REST to GraphQL (spike)
+  9  Evaluate Temporal for background jobs
+
+bugs
+ 10  Fix CORS headers on OPTIONS preflight
+ 11  Session cookie not expiring correctly
+  ── nice to fix
+ 12  Race condition in concurrent token refresh
+
+inbox
+ 13  Check in with DevOps about K8s quota increase
+ 14  Reply to sec audit findings email
+
+──────────────────────────────────────────────────────── personal
+
+errands
+ 15  Renew car insurance
+ 16  Pick up prescription
+ 17  Book dentist appointment
+
+someday
+ 18  Read «Shape Up»
+ 19  Learn Nix
+ 20  Try out Ghostty terminal
+ 21  Set up home NAS with ZFS
+
+inbox
+ 22  Call landlord about heating
+ 23  Buy birthday gift for mom

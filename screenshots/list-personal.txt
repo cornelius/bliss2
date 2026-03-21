@@ -1,0 +1,14 @@
+  errands
+   1  Renew car insurance
+   2  Pick up prescription
+   3  Book dentist appointment
+
+  someday
+   4  Read «Shape Up»
+   5  Learn Nix
+   6  Try out Ghostty terminal
+   7  Set up home NAS with ZFS
+
+  inbox
+   8  Call landlord about heating
+   9  Buy birthday gift for mom
