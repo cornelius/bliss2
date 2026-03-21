@@ -99,6 +99,11 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("cannot init a context in the home directory — use personal mode instead")
 			}
 
+			// Refuse to re-initialize a directory that already has a context.
+			if existing, err := blisscontext.ReadContextFile(cwd); err == nil && existing != "" {
+				return fmt.Errorf("already initialized as context %s", existing)
+			}
+
 			// Check for parent context
 			if parentUUID, parentDir, err := blisscontext.FindContext(filepath.Dir(cwd)); err == nil {
 				fmt.Printf("Note: parent context found in %s (UUID: %s)\n", parentDir, parentUUID)

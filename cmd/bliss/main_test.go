@@ -298,6 +298,24 @@ func TestList_all(t *testing.T) {
 	}
 }
 
+func TestInit_alreadyInitialized(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "myproject")
+	os.MkdirAll(proj, 0755)
+
+	if _, err := bliss(t, proj, env, "init"); err != nil {
+		t.Fatalf("first init: %v", err)
+	}
+
+	out, err := bliss(t, proj, env, "init")
+	if err == nil {
+		t.Fatalf("second init should have failed, got: %s", out)
+	}
+	if !strings.Contains(out, "already") {
+		t.Errorf("error output %q should mention 'already'", out)
+	}
+}
+
 func TestInit_homeDirectoryGuard(t *testing.T) {
 	home, env := blissEnv(t)
 
