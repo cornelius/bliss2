@@ -2,13 +2,9 @@
 
 Peace of mind with todos. Note them down when something occurs to you. Get them back to the top of your head when needed. With context. With the lowest effort possible.
 
-## Concept
+Minimize brain cycles spent on todos. Free your mind to think big.
 
-Maintain a database of todos as plain text files which can be version controlled and shared easily. Readable by humans and machines in the same way. Provide clients to work with these lists. Provide a protocol to store and sync it on a server and a distributed way. Store them with context and enough meta information to make sense of them forever. Have an intelligent way to resurface them when you are ready to work on them. Have a convenient way to manage them, prioritize.
-
-Should serve as personal Kanban. As todo list for a project. As a reminder for chores. As brain dump for ideas.
-
-Underlying principle: Minimize brain cycles spent on todos. Free your mind to think big. Have all the details ready when needed, only when needed.
+See [VISION.md](VISION.md) for the full picture.
 
 ## Prior art
 
@@ -17,6 +13,7 @@ Underlying principle: Minimize brain cycles spent on todos. Free your mind to th
 * https://trello.com (lists of list, excellent tool for personal Kanban)
 * http://todotxt.org/ (similar philosophy)
 * https://en.wikipedia.org/wiki/Getting_Things_Done (influential background)
+* https://cornelius.github.io/top/ (thoughts on productivity)
 
 ## Design
 
@@ -44,11 +41,7 @@ It should also be possible to capture todos from other input channels, e.g. a mo
 
 Todos should always be retrievable on request. By default in the context where it matters. Getting a list.
 
-There also should be a global overview. A list of lists, maybe a board. A board could also be handy in a project context.
-
-There also should be a way to let todos popup in the right context and right moment. Maybe as some kind of notification, but I don't want to see that as annoying thing that you have to silence, but as the magic help which gives you the support you just need. This would require some (artificial) intelligence. It also would need to keep environmental factors in mind, such as time or physical location, e.g. bubbling up the shopping list, when you are in the shop. This could be modeled as some sort of triggers. It could also be self-learning, so that you could give feedback, if a todo was surfaced at the right time and then the system would take this to improve for the next time. This might be much more than retrieving todos and warrant an own section.
-
-Basic principle: Clients, format, and storage should be flexible and workable. Robust for manual and automatic handling. They should serve as building blocks and basic elements which can be orchestrated into bigger systems and extended by features in a very modular way.
+There should also be a global overview. A list of lists, maybe a board.
 
 ### Prioritizing todos
 
@@ -62,11 +55,7 @@ List should have optional separators for micro grouping todos.
 
 There needs to be a way to check off todos which have been done.
 
-Done todos should vanish from the view visible all the time to remove mental load associated with them. They should be still available in the history on request, so they can be tracked, processed, and checked, when necessary.
-
-Completing a todo should be fund and satisfying experience. Like taking a piece of paper, crumbling it to a ball and throwing it into the bin. Or like popping a balloon. Or like exploding something. It should feel great to complete a todo.
-
-It also should be possible to remove todos. Not sure if it matters to make a difference between completing and removing a todo. Maybe not. And removing a todo can also be satisfying.
+Done todos should vanish from the view to remove the mental load associated with them. They should still be available in history on request.
 
 ## Development
 
@@ -123,7 +112,3 @@ See CLI.md for the full command specification.
 - CLI implemented in Go (module `github.com/cornelius/bliss2`, binary `bliss`)
 - Git as storage backend (`~/.bliss2/`)
 - An Android app for mobile capture is planned
-
-### Extensions
-
-Let's call them blisslets.
