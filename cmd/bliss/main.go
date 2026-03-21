@@ -31,15 +31,16 @@ var (
 )
 
 // Status command styles.
+// Color is used sparingly: one brand accent (cyan on "bliss"), grey for
+// de-emphasis, and green/amber/red only for meaningful status signals.
 var (
-	stTitle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#06B6D4"))
-	stDate     = lipgloss.NewStyle().Foreground(lipgloss.Color("#64748B"))
-	stCtxLabel = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#E2E8F0"))
-	stCnt      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#CBD5E1"))
-	stOtherCtx = lipgloss.NewStyle().Foreground(lipgloss.Color("#38BDF8"))
-	stPersonal = lipgloss.NewStyle().Foreground(lipgloss.Color("#C084FC"))
-	stPath     = lipgloss.NewStyle().Foreground(lipgloss.Color("#475569"))
-	stGitLine  = lipgloss.NewStyle().Foreground(lipgloss.Color("#64748B"))
+	stTitle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#06B6D4")) // brand
+	stMuted  = lipgloss.NewStyle().Foreground(lipgloss.Color("#64748B"))             // labels, secondary info
+	stPath   = lipgloss.NewStyle().Foreground(lipgloss.Color("#475569"))             // paths (darker)
+	stBold   = lipgloss.NewStyle().Bold(true)                                        // active names, counts
+	stGood   = lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981"))             // synced / ok
+	stWarn   = lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))             // ahead
+	stBad    = lipgloss.NewStyle().Foreground(lipgloss.Color("#F87171"))             // behind / error
 )
 
 func main() {
@@ -770,7 +771,7 @@ func statusCmd() *cobra.Command {
 			}
 
 			// ── header ───────────────────────────────────────────────────
-			date := stDate.Render(time.Now().Format("Mon Jan 02, 2006"))
+			date := stMuted.Render(time.Now().Format("Mon Jan 02, 2006"))
 			fmt.Println(stTitle.Render("bliss status") + "  " + date)
 			fmt.Println()
 
@@ -808,9 +809,9 @@ func statusCmd() *cobra.Command {
 			// ── store / git ───────────────────────────────────────────────
 			fmt.Println()
 			remote, ahead, behind, _ := s.GitSyncStatus()
-			storeLabel := stGitLine.Render(fmt.Sprintf("%-8s", "Store:"))
-			remoteLabel := stGitLine.Render(fmt.Sprintf("%-8s", "Remote:"))
-			syncLabel := stGitLine.Render(fmt.Sprintf("%-8s", "Sync:"))
+			storeLabel := stMuted.Render(fmt.Sprintf("%-8s", "Store:"))
+			remoteLabel := stMuted.Render(fmt.Sprintf("%-8s", "Remote:"))
+			syncLabel := stMuted.Render(fmt.Sprintf("%-8s", "Sync:"))
 			fmt.Println(storeLabel + s.Path())
 			if remote != "" {
 				fmt.Println(remoteLabel + remote)
@@ -919,28 +920,10 @@ func historyCmd() *cobra.Command {
 	return cmd
 }
 
-// listLabelStyle returns a color style for a known list name.
-func listLabelStyle(name string) lipgloss.Style {
-	switch name {
-	case "today":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#FBBF24"))
-	case "this-week":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#60A5FA"))
-	case "next-week":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#93C5FD"))
-	case "later":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#64748B"))
-	case "bugs":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#F87171"))
-	case "inbox":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#A78BFA"))
-	case "errands":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#2DD4BF"))
-	case "someday":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#FB7185"))
-	default:
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#94A3B8"))
-	}
+// listLabelStyle returns a muted grey style for list name labels.
+// List names are structural labels, not data — they should not draw attention.
+func listLabelStyle(_ string) lipgloss.Style {
+	return stMuted
 }
 
 // sortedCounts returns counts in a semantic display order: today → this-week →
@@ -994,7 +977,7 @@ func renderCounts(counts []listCount) string {
 	var parts []string
 	for _, lc := range counts {
 		label := listLabelStyle(lc.name).Render(lc.name + ":")
-		count := stCnt.Render(strconv.Itoa(lc.count))
+		count := stBold.Render(strconv.Itoa(lc.count))
 		parts = append(parts, label+" "+count)
 	}
 	return strings.Join(parts, "  ")
@@ -1002,23 +985,23 @@ func renderCounts(counts []listCount) string {
 
 // renderContextRow renders one context line in the status output.
 //
-// Column layout: [12 label+indicator][10 name][22 path][list data]
+// Column layout: [12 label+indicator][10 name][20 path][2 sep][list data]
 func renderContextRow(active bool, name, path string, counts []listCount) string {
 	// Label + indicator column (12 chars visual)
 	var prefix string
 	if active {
-		prefix = stDate.Render("Context:") + "  " + stTitle.Render(">") + " "
+		prefix = stMuted.Render("Context:") + "  " + stTitle.Render(">") + " "
 	} else {
-		prefix = stDate.Render("Context:") + "    "
+		prefix = stMuted.Render("Context:") + "    "
 	}
 
-	// Name column (10 chars)
+	// Name column (10 chars): bold for active, muted for inactive
 	nameStr := fmt.Sprintf("%-10s", name)
 	var nameStyled string
 	if active {
-		nameStyled = stCtxLabel.Render(nameStr)
+		nameStyled = stBold.Render(nameStr)
 	} else {
-		nameStyled = stOtherCtx.Render(nameStr)
+		nameStyled = stMuted.Render(nameStr)
 	}
 
 	// Path column (20 chars, home-shortened, truncated if needed) + 2-char separator.
@@ -1038,28 +1021,29 @@ func renderPersonalRow(active bool, counts []listCount) string {
 	// Label + indicator column (12 chars visual)
 	var prefix string
 	if active {
-		prefix = stPersonal.Render("Personal:") + " " + stTitle.Render(">") + " "
+		prefix = stMuted.Render("Personal:") + " " + stTitle.Render(">") + " "
 	} else {
-		prefix = stPersonal.Render("Personal:") + "   "
+		prefix = stMuted.Render("Personal:") + "   "
 	}
-	// Name + path columns are blank (10 + 22 = 32 spaces)
+	// Name + path columns are blank (10 + 20 + 2 = 32 spaces)
 	return prefix + strings.Repeat(" ", 32) + renderCounts(counts)
 }
 
 // renderSyncStatus formats the sync state value for the Sync: line.
+// Green/amber/red are used here because sync state is a meaningful status signal.
 func renderSyncStatus(remote string, ahead, behind int) string {
 	if remote == "" {
-		return stGitLine.Render("no remote")
+		return stMuted.Render("no remote")
 	}
 	if ahead == 0 && behind == 0 {
-		return stGitLine.Render("synced")
+		return stGood.Render("✓ synced")
 	}
 	var parts []string
 	if ahead > 0 {
-		parts = append(parts, fmt.Sprintf("↑%d ahead", ahead))
+		parts = append(parts, stWarn.Render(fmt.Sprintf("↑%d ahead", ahead)))
 	}
 	if behind > 0 {
-		parts = append(parts, fmt.Sprintf("↓%d behind", behind))
+		parts = append(parts, stBad.Render(fmt.Sprintf("↓%d behind", behind)))
 	}
-	return stGitLine.Render(strings.Join(parts, "  "))
+	return strings.Join(parts, "  ")
 }
