@@ -1,1 +1,1 @@
-Moved to [later]: Session cookie not expiring correctly
+Moved to [later]: Implement JWT refresh token rotation

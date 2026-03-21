@@ -1,65 +1,124 @@
-  api
-    Implement JWT refresh token rotation
-    Check in with DevOps about K8s quota increase
-    Migrate from REST to GraphQL (spike)
-    Set up rate limiting middleware
-    Add integration tests for login flow
-    Session cookie not expiring correctly
-    Fix CORS headers on OPTIONS preflight
-    Fix /users endpoint returning 500 on empty DB
-    Write OpenAPI spec for auth endpoints
-    Evaluate Temporal for background jobs
-    Profile slow SQL queries in production
-    Document deployment runbook
-    Race condition in concurrent token refresh
-    Reply to sec audit findings email
+bliss list --all
 
-  mobile
-    Push notification not delivered on Android 14
-    Fix crash on deep link when app is backgrounded
-    Investigate memory leak in image cache
-    Reply to App Store review about login issue
-    Submit build to TestFlight
-    Keyboard covers input on older iPhones
-    Reduce cold start time below 800 ms
-    Port to iPad layout
-    Implement biometric auth fallback
-    Check analytics drop on v2.3 release
-    Write UI tests for checkout flow
-    Add offline mode for core screens
+Context: api  Path: /tmp/bliss-test/api
 
-  frontend
-    Migrate component library to shadcn/ui
-    Add dark mode toggle to settings page
-    Fix mobile nav overflow on small screens
-    Write Storybook stories for Button and Input
-    Lazy-load dashboard charts
-    Ask design for updated error state illustrations
-    Sync with PM on Q2 roadmap priorities
-    Audit bundle size — target <200 kB gzipped
-    A/B test new onboarding flow
-    Dropdown closes on outside click in Safari
-    Chart tooltip misaligned on retina displays
+today
+  Implement JWT refresh token rotation
+  Fix /users endpoint returning 500 on empty DB
 
-  infra
-    Upgrade Kubernetes to 1.30
-    Write runbook for on-call rotation
-    Migrate CI to self-hosted runners
-    Set up Loki log aggregation
-    Check Dependabot alerts on infra repo
-    Bump base Docker images to Debian bookworm
-    Rotate expiring TLS certificates
-    Clean up unused S3 buckets
-    Set up cost alerting in AWS
-    Evaluate Pulumi vs Terraform for new infra
+this-week
+  Write OpenAPI spec for auth endpoints
+  Set up rate limiting middleware
+  ── backlog
+  Add integration tests for login flow
 
-  personal
-    Set up home NAS with ZFS
-    Read «Shape Up»
-    Book dentist appointment
-    Pick up prescription
-    Renew car insurance
-    Try out Ghostty terminal
-    Call landlord about heating
-    Buy birthday gift for mom
-    Learn Nix
+next-week
+  Profile slow SQL queries in production
+  Document deployment runbook
+
+later
+  Migrate from REST to GraphQL (spike)
+  Evaluate Temporal for background jobs
+
+bugs
+  Fix CORS headers on OPTIONS preflight
+  Session cookie not expiring correctly
+  ── nice to fix
+  Race condition in concurrent token refresh
+
+inbox
+  Check in with DevOps about K8s quota increase
+  Reply to sec audit findings email
+
+Context: frontend  Path: /tmp/bliss-test/frontend
+
+today
+  Migrate component library to shadcn/ui
+  Fix mobile nav overflow on small screens
+
+this-week
+  Add dark mode toggle to settings page
+  ──
+  Lazy-load dashboard charts
+
+next-week
+  Write Storybook stories for Button and Input
+
+later
+  A/B test new onboarding flow
+  Audit bundle size — target <200 kB gzipped
+
+bugs
+  Dropdown closes on outside click in Safari
+  Chart tooltip misaligned on retina displays
+
+inbox
+  Sync with PM on Q2 roadmap priorities
+  Ask design for updated error state illustrations
+
+Context: infra  Path: /tmp/bliss-test/infra
+
+today
+  Upgrade Kubernetes to 1.30
+  Rotate expiring TLS certificates
+
+this-week
+  Set up Loki log aggregation
+  ── review
+  Write runbook for on-call rotation
+
+next-week
+  Migrate CI to self-hosted runners
+  Set up cost alerting in AWS
+
+later
+  Evaluate Pulumi vs Terraform for new infra
+  Clean up unused S3 buckets
+
+inbox
+  Bump base Docker images to Debian bookworm
+  Check Dependabot alerts on infra repo
+
+Context: mobile  Path: /tmp/bliss-test/mobile
+
+today
+  Fix crash on deep link when app is backgrounded
+  Submit build to TestFlight
+
+this-week
+  Implement biometric auth fallback
+  Add offline mode for core screens
+
+next-week
+  Reduce cold start time below 800 ms
+  Write UI tests for checkout flow
+
+later
+  Port to iPad layout
+
+bugs
+  Investigate memory leak in image cache
+  ── low priority
+  Push notification not delivered on Android 14
+  Keyboard covers input on older iPhones
+
+inbox
+  Reply to App Store review about login issue
+  Check analytics drop on v2.3 release
+
+Personal
+
+errands
+  Renew car insurance
+  Pick up prescription
+  Book dentist appointment
+
+someday
+  Read «Shape Up»
+  Learn Nix
+  Try out Ghostty terminal
+  Set up home NAS with ZFS
+
+inbox
+  Buy birthday gift for mom
+  Call landlord about heating

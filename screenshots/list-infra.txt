@@ -1,31 +1,22 @@
-  later
-   1  Evaluate Pulumi vs Terraform for new infra
-   2  Clean up unused S3 buckets
+bliss list  Context: infra  Path: /tmp/bliss-test/infra
 
-  next-week
-   3  Migrate CI to self-hosted runners
-   4  Set up cost alerting in AWS
+today
+  1  Upgrade Kubernetes to 1.30
+  2  Rotate expiring TLS certificates
 
-  this-week
-   5  Set up Loki log aggregation
-      ── review
-   6  Write runbook for on-call rotation
+this-week
+  3  Set up Loki log aggregation
+  ── review
+  4  Write runbook for on-call rotation
 
-  today
-   7  Upgrade Kubernetes to 1.30
-   8  Rotate expiring TLS certificates
+next-week
+  5  Migrate CI to self-hosted runners
+  6  Set up cost alerting in AWS
 
-  errands
-   9  Renew car insurance
-  10  Pick up prescription
-  11  Book dentist appointment
+later
+  7  Evaluate Pulumi vs Terraform for new infra
+  8  Clean up unused S3 buckets
 
-  someday
-  12  Read «Shape Up»
-  13  Learn Nix
-  14  Try out Ghostty terminal
-  15  Set up home NAS with ZFS
-
-  inbox
-  16  Check Dependabot alerts on infra repo
-  17  Bump base Docker images to Debian bookworm
+inbox
+  9  Bump base Docker images to Debian bookworm
+ 10  Check Dependabot alerts on infra repo

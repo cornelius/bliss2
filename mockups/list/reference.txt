@@ -1,0 +1,201 @@
+# bliss list — reference mockup
+#
+# Header fields:
+#   "bliss list  Context: <name>  Path: <path>"          default view
+#   "bliss list  Context: <name>  List: <list>  Path: <path>"  filtered view
+#   "bliss list  Personal"                               --personal view
+#   "bliss list  Personal  List: <list>"                 --personal <list>
+#   "bliss list --all"                                   --all view (no numbers)
+#
+# Number field: right-aligned, width grows with item count.
+#   1-digit (1–9):   "  N  title"   (2 spaces + digit + 2 spaces)
+#   2-digit (10–99): " NN  title"   (1 space + 2 digits + 2 spaces)
+#
+# Section delimiters: dashes fill the number field, aligned with items.
+#   1-digit zone, named:    "  ── name"
+#   2-digit zone, named:    " ─── name"
+#   2-digit zone, unnamed:  " ───"
+#   --all (no numbers):     "  ──" / "  ── name"
+#
+# List order: today → this-week → next-week → later → [custom] → bugs → inbox
+# Empty lists are omitted.
+
+
+# ── bliss list ────────────────────────────────────────────────────────────────
+
+bliss list  Context: api  Path: /tmp/bliss-test/api
+
+today
+  1  Implement JWT refresh token rotation
+  2  Fix /users endpoint returning 500 on empty DB
+
+this-week
+  3  Write OpenAPI spec for auth endpoints
+  4  Set up rate limiting middleware
+  ── backlog
+  5  Add integration tests for login flow
+
+next-week
+  6  Profile slow SQL queries in production
+  7  Document deployment runbook
+
+later
+  8  Migrate from REST to GraphQL (spike)
+  9  Evaluate Temporal for background jobs
+
+bugs
+ 10  Fix CORS headers on OPTIONS preflight
+ 11  Session cookie not expiring correctly
+ ─── nice to fix
+ 12  Race condition in concurrent token refresh
+
+inbox
+ 13  Check in with DevOps about K8s quota increase
+ ───
+ 14  Reply to sec audit findings email
+
+
+# ── bliss list <listname> ─────────────────────────────────────────────────────
+
+bliss list  Context: api  List: this-week  Path: /tmp/bliss-test/api
+
+  1  Write OpenAPI spec for auth endpoints
+  2  Set up rate limiting middleware
+  ── backlog
+  3  Add integration tests for login flow
+
+
+# ── bliss list inbox ──────────────────────────────────────────────────────────
+
+bliss list  Context: api  List: inbox  Path: /tmp/bliss-test/api
+
+  1  Check in with DevOps about K8s quota increase
+  2  Reply to sec audit findings email
+
+
+# ── bliss list --personal ─────────────────────────────────────────────────────
+
+bliss list  Personal
+
+errands
+  1  Renew car insurance
+  2  Pick up prescription
+  3  Book dentist appointment
+
+someday
+  4  Read «Shape Up»
+  5  Learn Nix
+  6  Try out Ghostty terminal
+  7  Set up home NAS with ZFS
+
+inbox
+  8  Call landlord about heating
+  9  Buy birthday gift for mom
+
+
+# ── bliss list --personal <listname> ─────────────────────────────────────────
+
+bliss list  Personal  List: errands
+
+  1  Renew car insurance
+  2  Pick up prescription
+  3  Book dentist appointment
+
+
+# ── bliss list --all ──────────────────────────────────────────────────────────
+# No position numbers — spans multiple contexts.
+
+bliss list --all
+
+Context: api  Path: /tmp/bliss-test/api
+
+today
+  Implement JWT refresh token rotation
+  Fix /users endpoint returning 500 on empty DB
+
+this-week
+  Write OpenAPI spec for auth endpoints
+  Set up rate limiting middleware
+  ── backlog
+  Add integration tests for login flow
+
+bugs
+  Fix CORS headers on OPTIONS preflight
+  Session cookie not expiring correctly
+  ─── nice to fix
+  Race condition in concurrent token refresh
+
+inbox
+  Check in with DevOps about K8s quota increase
+  Reply to sec audit findings email
+
+Context: frontend  Path: /tmp/bliss-test/frontend
+
+today
+  Migrate component library to shadcn/ui
+  Fix mobile nav overflow on small screens
+
+this-week
+  Add dark mode toggle to settings page
+  ──
+  Lazy-load dashboard charts
+
+bugs
+  Dropdown closes on outside click in Safari
+  Chart tooltip misaligned on retina displays
+
+inbox
+  Ask design for updated error state illustrations
+  Sync with PM on Q2 roadmap priorities
+
+Context: infra  Path: /tmp/bliss-test/infra
+
+today
+  Upgrade Kubernetes to 1.30
+  Rotate expiring TLS certificates
+
+this-week
+  Set up Loki log aggregation
+  ── review
+  Write runbook for on-call rotation
+
+inbox
+  Bump base Docker images to Debian bookworm
+  Check Dependabot alerts on infra repo
+
+Context: mobile  Path: /tmp/bliss-test/mobile
+
+today
+  Fix crash on deep link when app is backgrounded
+  Submit build to TestFlight
+
+this-week
+  Implement biometric auth fallback
+  Add offline mode for core screens
+
+bugs
+  Investigate memory leak in image cache
+  ─── low priority
+  Push notification not delivered on Android 14
+  Keyboard covers input on older iPhones
+
+inbox
+  Reply to App Store review about login issue
+  Check analytics drop on v2.3 release
+
+Personal
+
+errands
+  Renew car insurance
+  Pick up prescription
+  Book dentist appointment
+
+someday
+  Read «Shape Up»
+  Learn Nix
+  Try out Ghostty terminal
+  Set up home NAS with ZFS
+
+inbox
+  Call landlord about heating
+  Buy birthday gift for mom

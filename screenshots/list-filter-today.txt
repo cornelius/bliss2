@@ -1,3 +1,4 @@
-  today
-   1  Implement JWT refresh token rotation
-   2  Fix /users endpoint returning 500 on empty DB
+bliss list  Context: api  List: today  Path: /tmp/bliss-test/api
+
+  1  Implement JWT refresh token rotation
+  2  Fix /users endpoint returning 500 on empty DB

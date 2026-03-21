@@ -23,11 +23,7 @@ import (
 )
 
 var (
-	styleListHeader  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	stylePos         = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleMuted       = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleActive      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
-	styleSectionHead = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	styleMuted = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
 // Status command styles.
@@ -253,7 +249,6 @@ func listCmd() *cobra.Command {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			// --all: show every context plus personal, no session.
 			if all {
 				return listAll(s)
 			}
@@ -263,48 +258,60 @@ func listCmd() *cobra.Command {
 				filterList = args[0]
 			}
 
-			// listCtxUUID is "" for personal mode (--personal or outside a context).
+			// listCtxUUID is "" for personal mode (--personal or no context).
 			listCtxUUID := contextUUID
 			if personal || contextUUID == "" {
 				listCtxUUID = ""
 			}
 
+			// ── header ───────────────────────────────────────────────────
+			fmt.Print(stTitle.Render("bliss list") + "  ")
+			if listCtxUUID == "" {
+				fmt.Print(stMuted.Render("Personal"))
+				if filterList != "" {
+					fmt.Print("  " + stMuted.Render("List:") + " " + stBold.Render(filterList))
+				}
+			} else {
+				ctxName, ctxPath, _ := s.ReadContextMeta(listCtxUUID)
+				fmt.Print(stMuted.Render("Context:") + " " + stBold.Render(ctxName))
+				if filterList != "" {
+					fmt.Print("  " + stMuted.Render("List:") + " " + stBold.Render(filterList))
+				}
+				fmt.Print("  " + stMuted.Render("Path:") + " " + stPath.Render(shortenHomePath(ctxPath)))
+			}
+			fmt.Println()
+			fmt.Println()
+
+			// ── content ───────────────────────────────────────────────────
 			session := make(map[int]string)
 			pos := 1
+			first := true
 
-			readTodo := func(uuid string) (todo.Todo, error) {
+			resolve := func(uuid string) (todo.Todo, error) {
 				return s.ReadTodo(listCtxUUID, uuid)
 			}
 
-			first := true
-			printList := func(header string, l list.List, resolve func(string) (todo.Todo, error)) {
+			printOne := func(name string, l list.List, showName bool) {
 				if !first {
 					fmt.Println()
 				}
 				first = false
-				fmt.Println(styleListHeader.Render("  " + header))
-				empty := true
+				if showName {
+					fmt.Println(stBold.Render(name))
+				}
 				for si, section := range l.Sections {
 					if si > 0 {
-						if section.Name != "" {
-							fmt.Println(styleSectionHead.Render("      ── " + section.Name))
-						} else {
-							fmt.Println(styleSectionHead.Render("      ──"))
-						}
+						fmt.Println(listSectionDelim(pos, section.Name))
 					}
 					for _, uuid := range section.Items {
 						t, err := resolve(uuid)
 						if err != nil {
 							continue
 						}
-						fmt.Printf("  %s  %s\n", stylePos.Render(fmt.Sprintf("%2d", pos)), t.Title)
+						fmt.Printf("%3d  %s\n", pos, t.Title)
 						session[pos] = uuid
 						pos++
-						empty = false
 					}
-				}
-				if empty {
-					fmt.Println(styleMuted.Render("    (no todos)"))
 				}
 			}
 
@@ -312,8 +319,7 @@ func listCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			inboxList := func() list.List {
+			inboxAsList := func() list.List {
 				uuids := make([]string, len(inboxTodos))
 				for i, t := range inboxTodos {
 					uuids[i] = t.UUID
@@ -322,7 +328,7 @@ func listCmd() *cobra.Command {
 			}
 
 			if filterList == "inbox" {
-				printList("inbox", inboxList(), readTodo)
+				printOne("inbox", inboxAsList(), false)
 				return s.WriteSession(session)
 			}
 
@@ -331,16 +337,16 @@ func listCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("reading list %q: %w", filterList, err)
 				}
-				printList(filterList, l, readTodo)
+				printOne(filterList, l, false)
 				return s.WriteSession(session)
 			}
 
-			// No filter: show context lists or personal lists, never both.
+			// No filter: all lists in semantic order, then inbox.
 			listNames, err := s.ListNames(listCtxUUID)
 			if err != nil {
 				return err
 			}
-			for _, name := range listNames {
+			for _, name := range sortListNames(listNames) {
 				l, err := s.ReadList(listCtxUUID, name)
 				if err != nil {
 					continue
@@ -348,14 +354,14 @@ func listCmd() *cobra.Command {
 				if len(list.AllUUIDs(l)) == 0 {
 					continue
 				}
-				printList(name, l, readTodo)
+				printOne(name, l, true)
 			}
 			if len(inboxTodos) > 0 {
-				printList("inbox", inboxList(), readTodo)
+				printOne("inbox", inboxAsList(), true)
 			}
 
 			if pos == 1 {
-				fmt.Println("(no todos)")
+				fmt.Println(stMuted.Render("(no todos)"))
 			}
 
 			return s.WriteSession(session)
@@ -367,40 +373,118 @@ func listCmd() *cobra.Command {
 	return cmd
 }
 
-// listAll shows todos from all contexts plus personal todos.
+// listAll shows todos from all contexts plus personal, grouped by list.
+// No position numbers are assigned (spans multiple contexts).
 func listAll(s *store.Store) error {
+	// Header
+	fmt.Println(stTitle.Render("bliss list --all"))
+
 	contextUUIDs, err := s.ListContextUUIDs()
 	if err != nil {
 		return err
 	}
 
-	first := true
-	printHeader := func(header string) {
-		if !first {
-			fmt.Println()
+	type ctxInfo struct{ uuid, name, path string }
+	var ctxs []ctxInfo
+	for _, uuid := range contextUUIDs {
+		name, path, _ := s.ReadContextMeta(uuid)
+		ctxs = append(ctxs, ctxInfo{uuid, name, path})
+	}
+	sort.Slice(ctxs, func(i, j int) bool { return ctxs[i].name < ctxs[j].name })
+
+	// printAllList prints one named list (no position numbers). Returns true if anything printed.
+	printAllList := func(ctxUUID, name string, l list.List, showName bool) bool {
+		if len(list.AllUUIDs(l)) == 0 {
+			return false
 		}
-		first = false
-		fmt.Println(styleListHeader.Render("  " + header))
+		if showName {
+			fmt.Println(stBold.Render(name))
+		}
+		for si, section := range l.Sections {
+			if si > 0 {
+				fmt.Println(listSectionDelim(1, section.Name))
+			}
+			for _, id := range section.Items {
+				t, err := s.ReadTodo(ctxUUID, id)
+				if err != nil {
+					continue
+				}
+				fmt.Printf("  %s\n", t.Title)
+			}
+		}
+		return true
 	}
 
-	for _, uuid := range contextUUIDs {
-		name, _, _ := s.ReadContextMeta(uuid)
-		todos, err := s.ListTodos(uuid)
+	for _, ctx := range ctxs {
+		todos, err := s.ListTodos(ctx.uuid)
 		if err != nil || len(todos) == 0 {
 			continue
 		}
-		printHeader(name)
-		for _, t := range todos {
-			fmt.Printf("    %s\n", t.Title)
+
+		fmt.Println()
+		fmt.Println(stMuted.Render("Context:") + " " + stBold.Render(ctx.name) +
+			"  " + stMuted.Render("Path:") + " " + stPath.Render(shortenHomePath(ctx.path)))
+		fmt.Println()
+
+		firstList := true
+		listNames, _ := s.ListNames(ctx.uuid)
+		for _, name := range sortListNames(listNames) {
+			l, err := s.ReadList(ctx.uuid, name)
+			if err != nil {
+				continue
+			}
+			if !firstList {
+				fmt.Println()
+			}
+			if printAllList(ctx.uuid, name, l, true) {
+				firstList = false
+			}
+		}
+
+		inboxTodos, _ := getInboxTodos(s, ctx.uuid)
+		if len(inboxTodos) > 0 {
+			if !firstList {
+				fmt.Println()
+			}
+			uuids := make([]string, len(inboxTodos))
+			for i, t := range inboxTodos {
+				uuids[i] = t.UUID
+			}
+			printAllList(ctx.uuid, "inbox", list.List{Sections: []list.Section{{Items: uuids}}}, true)
 		}
 	}
 
-	// Personal todos.
+	// Personal scope.
 	personalTodos, err := s.ListTodos("")
 	if err == nil && len(personalTodos) > 0 {
-		printHeader("personal")
-		for _, t := range personalTodos {
-			fmt.Printf("    %s\n", t.Title)
+		fmt.Println()
+		fmt.Println(stMuted.Render("Personal"))
+		fmt.Println()
+
+		firstList := true
+		personalNames, _ := s.PersonalListNames()
+		for _, name := range sortListNames(personalNames) {
+			l, err := s.ReadList("", name)
+			if err != nil {
+				continue
+			}
+			if !firstList {
+				fmt.Println()
+			}
+			if printAllList("", name, l, true) {
+				firstList = false
+			}
+		}
+
+		personalInbox, _ := getInboxTodos(s, "")
+		if len(personalInbox) > 0 {
+			if !firstList {
+				fmt.Println()
+			}
+			fmt.Println(stBold.Render("inbox"))
+			for _, t := range personalInbox {
+				fmt.Printf("  %s\n", t.Title)
+			}
 		}
 	}
 
@@ -915,37 +999,69 @@ func listLabelStyle(_ string) lipgloss.Style {
 	return stMuted
 }
 
-// sortedCounts returns counts in a semantic display order: today → this-week →
-// next-week → later → custom lists → bugs → inbox.
+// sortedCounts returns counts in semantic display order using listSortKey.
 func sortedCounts(counts []listCount) []listCount {
-	priority := func(name string) int {
-		switch name {
-		case "today":
-			return 0
-		case "this-week":
-			return 1
-		case "next-week":
-			return 2
-		case "later":
-			return 3
-		case "bugs":
-			return 5
-		case "inbox":
-			return 9
-		default:
-			return 4 // custom lists: after later, before bugs
-		}
-	}
 	out := make([]listCount, len(counts))
 	copy(out, counts)
 	sort.Slice(out, func(i, j int) bool {
-		pi, pj := priority(out[i].name), priority(out[j].name)
+		pi, pj := listSortKey(out[i].name), listSortKey(out[j].name)
 		if pi != pj {
 			return pi < pj
 		}
 		return out[i].name < out[j].name
 	})
 	return out
+}
+
+// listSortKey returns a sort priority for semantic list ordering:
+// today → this-week → next-week → later → custom → bugs → inbox.
+func listSortKey(name string) int {
+	switch name {
+	case "today":
+		return 0
+	case "this-week":
+		return 1
+	case "next-week":
+		return 2
+	case "later":
+		return 3
+	case "bugs":
+		return 5
+	case "inbox":
+		return 9
+	default:
+		return 4 // custom lists after "later", before "bugs"
+	}
+}
+
+// sortListNames sorts list names in semantic display order.
+func sortListNames(names []string) []string {
+	out := make([]string, len(names))
+	copy(out, names)
+	sort.Slice(out, func(i, j int) bool {
+		ki, kj := listSortKey(out[i]), listSortKey(out[j])
+		if ki != kj {
+			return ki < kj
+		}
+		return out[i] < out[j]
+	})
+	return out
+}
+
+// listSectionDelim returns a section delimiter aligned with the number field.
+// pos is the next item position: <10 → 1-digit zone (2 dashes), ≥10 → 2-digit (3 dashes).
+// Pass pos=1 when there are no position numbers (--all mode).
+func listSectionDelim(pos int, name string) string {
+	var s string
+	if pos >= 10 {
+		s = " ───"
+	} else {
+		s = "  ──"
+	}
+	if name != "" {
+		s += " " + name
+	}
+	return stMuted.Render(s)
 }
 
 // shortenHomePath replaces the home directory prefix in path with "~".

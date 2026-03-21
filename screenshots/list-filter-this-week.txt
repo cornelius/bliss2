@@ -1,5 +1,6 @@
-  this-week
-   1  Write OpenAPI spec for auth endpoints
-   2  Set up rate limiting middleware
-      ── backlog
-   3  Add integration tests for login flow
+bliss list  Context: api  List: this-week  Path: /tmp/bliss-test/api
+
+  1  Write OpenAPI spec for auth endpoints
+  2  Set up rate limiting middleware
+  ── backlog
+  3  Add integration tests for login flow

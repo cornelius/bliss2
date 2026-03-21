@@ -1,35 +1,26 @@
-  bugs
-   1  Investigate memory leak in image cache
-      ── low priority
-   2  Push notification not delivered on Android 14
-   3  Keyboard covers input on older iPhones
+bliss list  Context: mobile  Path: /tmp/bliss-test/mobile
 
-  later
-   4  Port to iPad layout
+today
+  1  Fix crash on deep link when app is backgrounded
+  2  Submit build to TestFlight
 
-  next-week
-   5  Reduce cold start time below 800 ms
-   6  Write UI tests for checkout flow
+this-week
+  3  Implement biometric auth fallback
+  4  Add offline mode for core screens
 
-  this-week
-   7  Implement biometric auth fallback
-   8  Add offline mode for core screens
+next-week
+  5  Reduce cold start time below 800 ms
+  6  Write UI tests for checkout flow
 
-  today
-   9  Fix crash on deep link when app is backgrounded
-  10  Submit build to TestFlight
+later
+  7  Port to iPad layout
 
-  errands
-  11  Renew car insurance
-  12  Pick up prescription
-  13  Book dentist appointment
+bugs
+  8  Investigate memory leak in image cache
+  ── low priority
+  9  Push notification not delivered on Android 14
+ 10  Keyboard covers input on older iPhones
 
-  someday
-  14  Read «Shape Up»
-  15  Learn Nix
-  16  Try out Ghostty terminal
-  17  Set up home NAS with ZFS
-
-  inbox
-  18  Reply to App Store review about login issue
-  19  Check analytics drop on v2.3 release
+inbox
+ 11  Reply to App Store review about login issue
+ 12  Check analytics drop on v2.3 release
