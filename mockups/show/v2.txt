@@ -1,0 +1,54 @@
+── v2: bliss show (inside a project context) ────────────────────────────────────
+
+bliss show  Context: myproject  Path: ~/git/myproject
+
+today
+  1  Fix the deploy pipeline
+  2  Review Alex's PR
+  ──
+  3  Write tests for auth
+
+this-week
+  4  Update documentation
+  5  Refactor auth module
+
+
+── v2: bliss show (personal mode — no context) ──────────────────────────────────
+
+bliss show  Personal
+
+today
+  1  Buy oat milk
+  2  Call dentist
+
+later
+  3  Read "Deep Work"
+
+
+── v2: bliss show (with non-empty inbox — inbox shown) ──────────────────────────
+
+bliss show  Context: myproject  Path: ~/git/myproject
+
+today
+  1  Fix the deploy pipeline
+
+inbox
+  2  Uncategorised new task
+  3  Another floating todo
+
+
+── v2: bliss show (nothing to show) ─────────────────────────────────────────────
+
+bliss show  Context: myproject  Path: ~/git/myproject
+
+(no todos)
+
+
+── v2: bliss show today (filtered, inside context) ──────────────────────────────
+
+bliss show  Context: myproject  Path: ~/git/myproject  List: today
+
+  1  Fix the deploy pipeline
+  2  Review Alex's PR
+  ──
+  3  Write tests for auth

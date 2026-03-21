@@ -57,6 +57,7 @@ func rootCmd() *cobra.Command {
 	root.AddCommand(
 		initCmd(),
 		addCmd(),
+		showCmd(),
 		listCmd(),
 		doneCmd(),
 		moveCmd(),
@@ -236,6 +237,134 @@ func addCmd() *cobra.Command {
 }
 
 // listCmd implements `bliss list [list-name]`
+// showCmd implements `bliss show [list-name]`
+// Focus mode: same scoping as bliss list, but inbox is omitted unless non-empty.
+// Future: will hide deferred todos and apply scene filtering.
+func showCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "show [list-name]",
+		Short: "Show actionable todos (focus mode)",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current directory: %w", err)
+			}
+
+			contextUUID, _, _ := blisscontext.FindContext(cwd)
+
+			s, err := store.Open()
+			if err != nil {
+				return fmt.Errorf("opening store: %w", err)
+			}
+
+			var filterList string
+			if len(args) > 0 {
+				filterList = args[0]
+			}
+
+			session := make(map[int]string)
+			pos := 1
+
+			resolve := func(uuid string) (todo.Todo, error) {
+				return s.ReadTodo(contextUUID, uuid)
+			}
+
+			inboxTodos, err := getInboxTodos(s, contextUUID)
+			if err != nil {
+				return err
+			}
+			inboxAsList := func() list.List {
+				uuids := make([]string, len(inboxTodos))
+				for i, t := range inboxTodos {
+					uuids[i] = t.UUID
+				}
+				return list.List{Sections: []list.Section{{Items: uuids}}}
+			}
+
+			// Filtered view: no list name, no indent, numbers start at column 0.
+			printFiltered := func(l list.List) {
+				for si, section := range l.Sections {
+					if si > 0 {
+						fmt.Println(listSectionDelim(pos, section.Name))
+					}
+					for _, uuid := range section.Items {
+						t, err := resolve(uuid)
+						if err != nil {
+							continue
+						}
+						fmt.Printf("%d  %s\n", pos, t.Title)
+						session[pos] = uuid
+						pos++
+					}
+				}
+			}
+
+			if filterList == "inbox" {
+				printFiltered(inboxAsList())
+				return s.WriteSession(session)
+			}
+
+			if filterList != "" {
+				l, err := s.ReadList(contextUUID, filterList)
+				if err != nil {
+					return fmt.Errorf("reading list %q: %w", filterList, err)
+				}
+				printFiltered(l)
+				return s.WriteSession(session)
+			}
+
+			// Unfiltered view: list name bold, items indented with right-aligned number.
+			first := true
+			printOne := func(name string, l list.List) {
+				if !first {
+					fmt.Println()
+				}
+				first = false
+				fmt.Println(stBold.Render(name))
+				for si, section := range l.Sections {
+					if si > 0 {
+						fmt.Println(listSectionDelim(pos, section.Name))
+					}
+					for _, uuid := range section.Items {
+						t, err := resolve(uuid)
+						if err != nil {
+							continue
+						}
+						fmt.Printf("%3d  %s\n", pos, t.Title)
+						session[pos] = uuid
+						pos++
+					}
+				}
+			}
+
+			listNames, err := s.ListNames(contextUUID)
+			if err != nil {
+				return err
+			}
+			for _, name := range sortListNames(listNames) {
+				l, err := s.ReadList(contextUUID, name)
+				if err != nil {
+					continue
+				}
+				if len(list.AllUUIDs(l)) == 0 {
+					continue
+				}
+				printOne(name, l)
+			}
+			if len(inboxTodos) > 0 {
+				printOne("inbox", inboxAsList())
+			}
+
+			if pos == 1 {
+				fmt.Println(stMuted.Render("All done. Nothing left to do."))
+			}
+
+			return s.WriteSession(session)
+		},
+	}
+}
+
 func listCmd() *cobra.Command {
 	var all bool
 	var personal bool

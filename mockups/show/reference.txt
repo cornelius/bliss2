@@ -1,0 +1,59 @@
+# bliss show — reference mockup
+#
+# Focus mode: same scoping as bliss list, filtered for action.
+# Key differences from bliss list:
+#   - No header line, ever.
+#   - Inbox omitted unless non-empty.
+#   - Filtered view (bliss show <list>): no list name, no indent.
+#   - Empty state: "All done. Nothing left to do." (stMuted)
+#
+# Unfiltered items: "%3d  %s\n" (right-aligned number in 3 chars, 2 spaces, title)
+# Filtered items:   "%d  %s\n"  (no padding, numbers start at column 0)
+# Section delimiter: listSectionDelim() helper (same as bliss list)
+# List name: stBold, no indent. Blank line between lists.
+
+
+# ── bliss show (inside a project context) ─────────────────────────────────────
+
+today
+  1  Fix the deploy pipeline
+  2  Review Alex's PR
+  ──
+  3  Write tests for auth
+
+this-week
+  4  Update documentation
+  5  Refactor auth module
+
+
+# ── bliss show (personal mode — no context) ───────────────────────────────────
+
+today
+  1  Buy oat milk
+  2  Call dentist
+
+later
+  3  Read "Deep Work"
+
+
+# ── bliss show (inbox non-empty — shown at end) ───────────────────────────────
+
+today
+  1  Fix the deploy pipeline
+
+inbox
+  2  Uncategorised new task
+  3  Another floating todo
+
+
+# ── bliss show today (filtered to one list) ───────────────────────────────────
+
+1  Fix the deploy pipeline
+2  Review Alex's PR
+──
+3  Write tests for auth
+
+
+# ── bliss show (empty) ────────────────────────────────────────────────────────
+
+All done. Nothing left to do.
