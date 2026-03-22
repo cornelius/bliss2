@@ -20,20 +20,22 @@ go build ./cmd/bliss
 
 **Never test manually.** If something needs verifying, write a test for it. Manual runs are not repeatable and don't protect against regressions.
 
-## Issue tracking
+## Local todos
 
-Todos for this project are tracked in bliss itself. The store is at `~/.bliss2/`. The context is the repo root (`.bliss-context` file).
+When developing bliss itself, use bliss to track local development todos — things a developer or agent wants to keep in mind while working on the codebase, such as "check if this edge case is handled" or "revisit this approach after the refactor". This is not a replacement for the project's issue tracker; it is for local, in-progress state that lives on the developer's machine.
 
-Always run `./bliss list` first to get current position numbers before acting on any todo. Position numbers are stable within a session — running `bliss done 5` does not shift position 6 to 5. The session mapping is only replaced when `bliss list` is run again. To act on multiple todos without re-listing, use each todo's original position number from the last `bliss list` output.
+The store is at `~/.bliss2/`. The context is the repo root (`.bliss-context` file).
+
+Always run `bliss list` first to get current position numbers before acting on any todo. Position numbers are stable within a session — running `bliss done 5` does not shift position 6 to 5. The session mapping is only replaced when `bliss list` is run again. To act on multiple todos without re-listing, use each todo's original position number from the last `bliss list` output.
 
 UUIDs are stable across sessions and can also be used with `bliss done` and `bliss move`.
 
 Useful commands:
 ```sh
-./bliss list                      # see all todos with position numbers
-./bliss move <n> -l <list>        # move a todo to a list
-./bliss done <n>                  # complete a todo
-./bliss history                   # see recent changes
+bliss list                      # see all todos with position numbers
+bliss move <n> -l <list>        # move a todo to a list
+bliss done <n>                  # complete a todo
+bliss history                   # see recent changes
 ```
 
 Current lists: `next`, `groom`, inbox (virtual — todos not in any list).
