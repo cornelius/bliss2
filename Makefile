@@ -3,4 +3,6 @@ build:
 
 install:
 	go install ./cmd/bliss
-	
+
+test:
+	go test ./...
