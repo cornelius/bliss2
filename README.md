@@ -14,10 +14,10 @@ See [VISION.md](VISION.md) for the full picture.
 
 ```sh
 # Run tests
-go test ./...
+make test
 
 # Build and run locally without installing
-go build ./cmd/bliss
+make
 ./bliss
 ```
 
@@ -32,7 +32,7 @@ export PATH="$PATH:$HOME/go/bin"
 Then install:
 
 ```sh
-go install ./cmd/bliss
+make install
 ```
 
 ## Usage
