@@ -10,6 +10,8 @@ Minimize brain cycles spent on todos. Free your mind to think big. Have all the 
 
 Peace of mind. Note something down when it occurs to you. Get it back when you need it. With context. With the lowest effort possible.
 
+Bliss is a place where thoughts briefly land so they don’t stay in your head. It's meant to reduce mental load without creating a new system to maintain.
+
 ## Context and Scenes
 
 Depending on the context you have different things to do. Context is defined as a location in your file system. Where you work. Like a repo, but as a transparent container for it, more like an overlay.
