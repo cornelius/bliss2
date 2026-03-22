@@ -130,6 +130,86 @@ func TestWorkflow_init(t *testing.T) {
 	}
 }
 
+// TestDone_uuid verifies bliss done accepts a UUID directly, bypassing the session.
+func TestDone_uuid(t *testing.T) {
+	home, env := blissEnv(t)
+	dir := t.TempDir()
+
+	bliss(t, dir, env, "add", "Delete by UUID")
+
+	// Find the todo file in the personal store to get the UUID.
+	matches, err := filepath.Glob(filepath.Join(home, ".bliss2", "todos", "*.md"))
+	if err != nil || len(matches) == 0 {
+		t.Fatalf("could not find todo file in store: %v", err)
+	}
+	uuid := strings.TrimSuffix(filepath.Base(matches[0]), ".md")
+
+	// No bliss list — UUID bypasses the session.
+	out, err := bliss(t, dir, env, "done", uuid)
+	if err != nil {
+		t.Fatalf("done by UUID: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Done:") {
+		t.Errorf("output %q missing 'Done:' confirmation", out)
+	}
+	if !strings.Contains(out, "Delete by UUID") {
+		t.Errorf("output %q missing todo title", out)
+	}
+}
+
+// TestAdd_urgent verifies --urgent places the todo at the top of the list.
+func TestAdd_urgent(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	bliss(t, dir, env, "add", "Normal task", "-l", "today")
+	bliss(t, dir, env, "add", "Urgent task", "-l", "today", "--urgent")
+
+	out, err := bliss(t, dir, env, "list", "today")
+	if err != nil {
+		t.Fatalf("list today: %v\n%s", err, out)
+	}
+
+	urgentIdx := strings.Index(out, "Urgent task")
+	normalIdx := strings.Index(out, "Normal task")
+	if urgentIdx < 0 || normalIdx < 0 {
+		t.Fatalf("missing tasks in output:\n%s", out)
+	}
+	if urgentIdx >= normalIdx {
+		t.Errorf("urgent task should appear before normal task:\n%s", out)
+	}
+}
+
+// TestMove_urgent verifies --urgent places the moved todo at the top of the target list.
+func TestMove_urgent(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	bliss(t, dir, env, "add", "First in later", "-l", "later")
+	bliss(t, dir, env, "add", "Second in later", "-l", "later")
+	bliss(t, dir, env, "add", "Move me urgent") // lands in inbox
+	bliss(t, dir, env, "list")
+
+	out, err := bliss(t, dir, env, "move", "3", "-l", "later", "--urgent")
+	if err != nil {
+		t.Fatalf("move --urgent: %v\n%s", err, out)
+	}
+
+	out, err = bliss(t, dir, env, "list", "later")
+	if err != nil {
+		t.Fatalf("list later: %v\n%s", err, out)
+	}
+
+	movedIdx := strings.Index(out, "Move me urgent")
+	firstIdx := strings.Index(out, "First in later")
+	if movedIdx < 0 || firstIdx < 0 {
+		t.Fatalf("missing todos in output:\n%s", out)
+	}
+	if movedIdx >= firstIdx {
+		t.Errorf("urgently moved todo should appear before existing todos:\n%s", out)
+	}
+}
+
 // TestHistory_header verifies bliss history opens with a "bliss history" header.
 func TestHistory_header(t *testing.T) {
 	home, env := blissEnv(t)

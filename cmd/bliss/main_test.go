@@ -419,6 +419,28 @@ func TestStatus_stalePath(t *testing.T) {
 	}
 }
 
+func TestSession_stability(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	bliss(t, dir, env, "add", "First", "-l", "today")
+	bliss(t, dir, env, "add", "Second", "-l", "today")
+	bliss(t, dir, env, "add", "Third", "-l", "today")
+	bliss(t, dir, env, "list")
+
+	// Complete position 1.
+	bliss(t, dir, env, "done", "1")
+
+	// Position 3 must still resolve to "Third" — session is not renumbered.
+	out, err := bliss(t, dir, env, "done", "3")
+	if err != nil {
+		t.Fatalf("done 3 after done 1: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Third") {
+		t.Errorf("done 3 output %q: expected 'Third', session must not renumber", out)
+	}
+}
+
 func TestContexts_removed(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()

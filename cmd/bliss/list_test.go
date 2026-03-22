@@ -293,6 +293,32 @@ func TestList_emptyListsOmitted(t *testing.T) {
 	}
 }
 
+// TestList_personalFlagInsideContext verifies --personal shows only personal
+// todos and excludes context todos when run from inside a context.
+func TestList_personalFlagInsideContext(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "myproject")
+	os.MkdirAll(proj, 0755)
+
+	bliss(t, proj, env, "init", "--name", "myproject")
+	bliss(t, proj, env, "add", "Context task", "-l", "today")
+	bliss(t, home, env, "add", "Personal task", "-l", "today")
+
+	out, err := bliss(t, proj, env, "list", "--personal")
+	if err != nil {
+		t.Fatalf("list --personal: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Personal task") {
+		t.Errorf("output %q missing personal task", out)
+	}
+	if strings.Contains(out, "Context task") {
+		t.Errorf("output %q must not show context task with --personal", out)
+	}
+	if !strings.Contains(out, "Personal") {
+		t.Errorf("output %q missing 'Personal' in header", out)
+	}
+}
+
 // TestList_all_noNumbers verifies --all output has no position numbers.
 func TestList_all_noNumbers(t *testing.T) {
 	home, env := blissEnv(t)
