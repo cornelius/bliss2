@@ -1,8 +1,10 @@
 # Bliss 2
 
-Peace of mind with todos. Note them down when something occurs to you. Get them back to the top of your head when needed. With context. With the lowest effort possible.
+Peace of mind with your personal todos. Note them down when something occurs to you. Bring them back when needed. With context. With minimal effort.
 
 Minimize brain cycles spent on todos. Free your mind to think big.
+
+This is not for project management or for sharing tasks in a team. This is for your personal todos. Without the weight.
 
 See [VISION.md](VISION.md) for the full picture.
 

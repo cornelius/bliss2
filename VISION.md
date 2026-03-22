@@ -28,6 +28,10 @@ Clients, format, and storage should be flexible and workable. Robust for manual 
 
 CLI client, Android client, GUI, serving different use cases and audiences. Tied together through the format and architecture of Bliss.
 
+## What Bliss should not be
+
+Bliss is not a project management system. It's not meant to organize a team or to share tasks with other people. It's for you, personally.
+
 ## Surfacing todos
 
 Todos should always be retrievable on request. By default in the context where they matter.
