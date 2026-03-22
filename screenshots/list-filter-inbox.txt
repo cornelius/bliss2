@@ -1,4 +1,0 @@
-bliss list  Context: api  List: inbox  Path: /tmp/bliss-test/api
-
-  1  Reply to sec audit findings email
-  2  Check in with DevOps about K8s quota increase

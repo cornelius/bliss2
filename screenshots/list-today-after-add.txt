@@ -1,5 +1,0 @@
-  today
-   1  Hotfix: invalid token breaks all clients
-   2  Implement JWT refresh token rotation
-   3  Fix /users endpoint returning 500 on empty DB
-   4  Patch OpenSSL vulnerability
