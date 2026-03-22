@@ -56,4 +56,4 @@ See CLI.md for the full command specification.
 
 ## License
 
-This project is licensed under GPL-2.0-or-later.
+This is a project by [Cornelius Schumacher](https://cornelius.tech). Built with freedom in mind. Licensed under [MIT](LICENSE.txt).
