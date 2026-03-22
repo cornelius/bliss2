@@ -26,6 +26,8 @@ Should serve as personal Kanban. As todo list for a project. As a reminder for c
 
 Clients, format, and storage should be flexible and workable. Robust for manual and automatic handling. Building blocks which can be orchestrated into bigger systems and extended in a modular way.
 
+CLI client, Android client, GUI, serving different use cases and audiences. Tied together through the format and architecture of Bliss.
+
 ## Surfacing todos
 
 Todos should always be retrievable on request. By default in the context where they matter.

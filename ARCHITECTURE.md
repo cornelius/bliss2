@@ -11,7 +11,9 @@ internal/list/          — list file read/write, sections
 internal/ui/            — interactive terminal UI (check, groom)
 ```
 
-## Dependencies
+## Client implementation
+
+- CLI implemented in Go (module `github.com/cornelius/bliss2`, binary `bliss`)
 
 - `cobra` — CLI command structure
 - `bubbletea` — interactive terminal UI
@@ -20,6 +22,8 @@ internal/ui/            — interactive terminal UI (check, groom)
 Dependencies are kept minimal. Any addition requires a clear reason.
 
 ## Git Integration
+
+- Git as storage backend (`~/.bliss2/`)
 
 `go-git` is used for all git operations. It is encapsulated entirely within the `store` package behind an interface:
 

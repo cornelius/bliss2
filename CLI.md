@@ -7,8 +7,6 @@
 - The current context is determined by walking up the directory tree from the working directory, using the first `.bliss-context` file found.
 - Commands are either strictly non-interactive or strictly interactive. No command switches between modes based on arguments or flags.
 
----
-
 ## Commands
 
 ### Non-Interactive Commands
@@ -189,8 +187,6 @@ bliss history --personal
 bliss history --all
 ```
 
----
-
 ### Interactive Commands
 
 Interactive commands take over the terminal and allow navigation and action via keyboard. They never print plain text output. Changes are committed as a single git commit when the session ends.
@@ -252,8 +248,6 @@ When a todo is moved or completed it disappears from the current view immediatel
 ##### List Sections
 
 Sections within a list are separated by `---` lines in the list file, optionally named (`--- urgent`). Sections are numbered 1–9 within each list and can be targeted when moving todos.
-
----
 
 ## Rationale
 
