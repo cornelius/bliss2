@@ -173,6 +173,19 @@ System overview: all contexts with their list counts, plus store and sync info.
 bliss status
 ```
 
+#### `bliss doctor` _(planned)_
+
+Scans the store for known problems and reports or fixes them.
+
+Checks include:
+
+- **Stale context paths**: contexts whose recorded init path no longer contains a `.bliss-context` file pointing to the correct UUID. Reports the context name and stale path.
+- **Missing `.gitignore`**: verifies `~/.bliss2/.gitignore` exists and contains `session.txt`. If missing, creates it. (`session.txt` is machine-local state and must not be version-controlled.)
+
+```
+bliss doctor
+```
+
 #### `bliss history [--personal] [--all]`
 
 Shows the change history for the current context.

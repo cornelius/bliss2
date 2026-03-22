@@ -85,12 +85,26 @@ func Init() (*Store, error) {
 		}
 	}
 
+	if err := ensureGitignore(path); err != nil {
+		return nil, err
+	}
+
 	repo, err := initGitRepo(path)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Store{path: path, repo: repo}, nil
+}
+
+// ensureGitignore writes ~/.bliss2/.gitignore if it does not already exist.
+// session.txt is machine-local state and must not be version-controlled.
+func ensureGitignore(storePath string) error {
+	p := filepath.Join(storePath, ".gitignore")
+	if _, err := os.Stat(p); err == nil {
+		return nil // already exists
+	}
+	return os.WriteFile(p, []byte("session.txt\n"), 0644)
 }
 
 func initGitRepo(path string) (*git.Repository, error) {
