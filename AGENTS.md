@@ -20,6 +20,8 @@ go build ./cmd/bliss
 
 **Never test manually.** If something needs verifying, write a test for it. Manual runs are not repeatable and don't protect against regressions.
 
+New behavioral tests go in `cmd/bliss/e2e/` (invoke the real binary, verify the user contract). Internal logic tests go alongside their package. See ARCHITECTURE.md § Testing for the full strategy.
+
 ## Local todos
 
 When developing bliss itself, use bliss to track local development todos — things a developer or agent wants to keep in mind while working on the codebase, such as "check if this edge case is handled" or "revisit this approach after the refactor". This is not a replacement for the project's issue tracker; it is for local, in-progress state that lives on the developer's machine.

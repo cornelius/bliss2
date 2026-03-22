@@ -4,6 +4,7 @@
 
 ```
 cmd/bliss/main.go       — entry point
+cmd/bliss/e2e/          — e2e tests (invoke the real binary, verify user contract)
 internal/store/         — store access, git operations
 internal/context/       — resolving .bliss-context markers
 internal/todo/          — todo file read/write
@@ -53,10 +54,53 @@ No other package constructs paths into the store or reads/writes store files dir
 
 ## Testing
 
-- **Unit tests** for packages with well-defined logic (todo parsing, list parsing, context resolution). Minimal mocking — tests touch real files in temp directories where possible.
-- **Integration tests** that invoke the full CLI, set up test data, run sequences of commands, and assert on output and file state.
-- Coverage is focused on the parts most likely to break when things change, not on achieving a particular percentage.
+Two distinct layers, with different purposes. Some overlap between them is
+expected and fine — they are not solving the same problem.
+
+### E2e tests (`cmd/bliss/e2e/`)
+
+E2e tests verify the **user contract**. They invoke the real `bliss` binary,
+set up state through the CLI, and assert on observable output and exit codes.
+They are implementation-agnostic: a rewrite in another language should pass
+them unchanged.
+
+**CLI.md is the specification.** Every documented command, flag, and behavior
+should have a corresponding e2e test. Together the e2e suite is a machine-
+readable version of the spec.
+
+Guidelines:
+- One binary build shared across all tests (TestMain pattern).
+- Each test gets an isolated HOME via a temp directory — no shared state.
+- Test names read as specifications: `TestSync_pushesCommitsToRemote`.
+- Assertion messages state the contract, not the code path.
+- Local bare git repos stand in as remotes — no network, no SSH keys.
+
+### Unit tests (`*_test.go` alongside the package)
+
+Unit tests are a **development tool**. Their primary purpose is fast feedback
+during development: they catch regressions immediately, are cheap to run, and
+are cheap to write. They test internal contracts — the behavior of individual
+functions and packages in isolation.
+
+Unit tests should exist even when they duplicate checks already covered by e2e
+tests, because their purpose is different: not proving end-to-end correctness
+but making it fast and easy to identify exactly what broke and where.
+
+Prefer unit tests for:
+- Corner cases and error paths that are expensive to drive from the CLI.
+- Formatting, sorting, and layout logic (output alignment, semantic order).
+- Internal contracts between packages.
+- Anything where a unit test covers in 5 lines what an e2e test needs 30 for.
+
+Guidelines:
+- Touch real files in temp directories — minimal mocking.
+- Keep them fast. If a test needs a git repo, that is acceptable; if it needs
+  a remote, write an e2e test instead.
+
+### General
+
 - **Never test manually.** If something needs verifying, write a test.
+- Coverage is focused on the parts most likely to break, not a percentage goal.
 
 ## Session File
 
