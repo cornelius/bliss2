@@ -1,4 +1,4 @@
-package main
+package e2e
 
 import (
 	"os"
@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// TestShow_noHeader verifies bliss show has no header line.
 func TestShow_noHeader(t *testing.T) {
 	home, env := blissEnv(t)
 	proj := filepath.Join(home, "myproject")
@@ -31,12 +30,10 @@ func TestShow_noHeader(t *testing.T) {
 	}
 }
 
-// TestShow_inboxOmittedWhenEmpty verifies inbox is not shown when empty.
 func TestShow_inboxOmittedWhenEmpty(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
-	// Add to a named list (not inbox).
 	bliss(t, dir, env, "add", "A task", "-l", "today")
 
 	out, err := bliss(t, dir, env, "show")
@@ -48,12 +45,10 @@ func TestShow_inboxOmittedWhenEmpty(t *testing.T) {
 	}
 }
 
-// TestShow_inboxShownWhenNonEmpty verifies inbox appears when it has items.
 func TestShow_inboxShownWhenNonEmpty(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
-	// Add to inbox (no -l flag).
 	bliss(t, dir, env, "add", "Inbox task")
 
 	out, err := bliss(t, dir, env, "show")
@@ -68,15 +63,13 @@ func TestShow_inboxShownWhenNonEmpty(t *testing.T) {
 	}
 }
 
-// TestShow_noPersonalWhenInContext verifies personal todos are not shown inside a context.
-func TestShow_noPersonalWhenInContext(t *testing.T) {
+func TestShow_noPersonalTodosInsideContext(t *testing.T) {
 	home, env := blissEnv(t)
 	proj := filepath.Join(home, "myproject")
 	os.MkdirAll(proj, 0755)
 
 	bliss(t, proj, env, "init", "--name", "myproject")
 	bliss(t, proj, env, "add", "Context task", "-l", "today")
-	// Add a personal todo from outside the context.
 	bliss(t, home, env, "add", "Personal task", "-l", "today")
 
 	out, err := bliss(t, proj, env, "show")
@@ -91,7 +84,6 @@ func TestShow_noPersonalWhenInContext(t *testing.T) {
 	}
 }
 
-// TestShow_positionNumbers verifies todos have position numbers.
 func TestShow_positionNumbers(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
@@ -103,16 +95,12 @@ func TestShow_positionNumbers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("show: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "1") {
-		t.Errorf("output %q missing position number 1", out)
-	}
-	if !strings.Contains(out, "2") {
-		t.Errorf("output %q missing position number 2", out)
+	if !strings.Contains(out, "1") || !strings.Contains(out, "2") {
+		t.Errorf("output %q missing position numbers", out)
 	}
 }
 
-// TestShow_doneWorksAfterShow verifies session mapping is written so bliss done works.
-func TestShow_doneWorksAfterShow(t *testing.T) {
+func TestShow_sessionMappingWritten(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
@@ -128,8 +116,7 @@ func TestShow_doneWorksAfterShow(t *testing.T) {
 	}
 }
 
-// TestShow_empty verifies the empty state message.
-func TestShow_empty(t *testing.T) {
+func TestShow_emptyState(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
@@ -142,9 +129,7 @@ func TestShow_empty(t *testing.T) {
 	}
 }
 
-// TestShow_filteredList verifies bliss show <list-name> shows only that list
-// with no list name header and no indent.
-func TestShow_filteredList(t *testing.T) {
+func TestShow_filteredToOneList(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
@@ -161,15 +146,13 @@ func TestShow_filteredList(t *testing.T) {
 	if strings.Contains(out, "Later task") {
 		t.Errorf("output %q must not show 'Later task' when filtered to today", out)
 	}
-	// No list name shown in filtered mode.
+	// Filtered mode: no list name header, numbers start at column 0.
 	if strings.Contains(out, "today") {
 		t.Errorf("output %q must not show list name in filtered mode", out)
 	}
-	// No header.
 	if strings.Contains(out, "List:") {
 		t.Errorf("output %q must not contain 'List:' label", out)
 	}
-	// Number starts at column 0 — line should start with "1  ".
 	if !strings.HasPrefix(strings.TrimLeft(out, "\n"), "1  ") {
 		t.Errorf("output %q: filtered items must start at column 0", out)
 	}

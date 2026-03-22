@@ -173,6 +173,17 @@ System overview: all contexts with their list counts, plus store and sync info.
 bliss status
 ```
 
+#### `bliss sync`
+
+Syncs the store with its remote: fetches, pulls if behind, pushes if ahead.
+
+- Errors if no remote is configured.
+- Pull is fast-forward only. If the store has diverged, bliss reports an error and leaves resolution to the user (`git` in `~/.bliss2/`).
+
+```
+bliss sync
+```
+
 #### `bliss doctor` _(planned)_
 
 Scans the store for known problems and reports or fixes them.

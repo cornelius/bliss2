@@ -64,6 +64,7 @@ func rootCmd() *cobra.Command {
 		checkCmd(),
 		groomCmd(),
 		statusCmd(),
+		syncCmd(),
 		historyCmd(),
 	)
 
@@ -1084,6 +1085,44 @@ func isContextPathFresh(path, uuid string) bool {
 		return false
 	}
 	return strings.TrimSpace(string(data)) == uuid
+}
+
+func syncCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "sync",
+		Short: "Sync the store with the remote (fetch, pull, push)",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := store.Open()
+			if err != nil {
+				return err
+			}
+
+			pushed, pulled, err := s.Sync()
+			if err != nil {
+				return err
+			}
+
+			switch {
+			case pushed > 0:
+				word := "commits"
+				if pushed == 1 {
+					word = "commit"
+				}
+				fmt.Printf("%s %d %s.\n", stMuted.Render("Pushed"), pushed, word)
+			case pulled > 0:
+				word := "commits"
+				if pulled == 1 {
+					word = "commit"
+				}
+				fmt.Printf("%s %d %s.\n", stMuted.Render("Pulled"), pulled, word)
+			default:
+				fmt.Println(stMuted.Render("Already up to date."))
+			}
+
+			return nil
+		},
+	}
 }
 
 func historyCmd() *cobra.Command {

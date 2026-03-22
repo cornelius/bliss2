@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"os/exec"
+
 	"gopkg.in/yaml.v3"
 
 	"github.com/go-git/go-git/v5"
@@ -618,4 +620,52 @@ func (s *Store) GitSyncStatus() (remote string, ahead, behind int, err error) {
 	}
 
 	return remote, ahead, behind, nil
+}
+
+// Sync fetches from the remote, pulls if behind, and pushes if ahead.
+// Returns the number of commits pushed and pulled.
+// Errors if no remote is configured or if the branches have diverged.
+func (s *Store) Sync() (pushed, pulled int, err error) {
+	remotes, err := s.repo.Remotes()
+	if err != nil || len(remotes) == 0 {
+		return 0, 0, fmt.Errorf("no remote configured — add one with git in %s", s.path)
+	}
+
+	if out, ferr := exec.Command("git", "-C", s.path, "fetch").CombinedOutput(); ferr != nil {
+		return 0, 0, fmt.Errorf("fetch failed: %s", strings.TrimSpace(string(out)))
+	}
+
+	// Count ahead/behind using git directly after the fetch.
+	// go-git caches remote refs and does not see changes made by external git commands.
+	behindOut, err := exec.Command("git", "-C", s.path, "rev-list", "HEAD..@{u}", "--count").Output()
+	if err != nil {
+		// No upstream tracking branch set (never pushed) — treat as in sync.
+		return 0, 0, nil
+	}
+	aheadOut, err := exec.Command("git", "-C", s.path, "rev-list", "@{u}..HEAD", "--count").Output()
+	if err != nil {
+		return 0, 0, nil
+	}
+	behind, _ := strconv.Atoi(strings.TrimSpace(string(behindOut)))
+	ahead, _ := strconv.Atoi(strings.TrimSpace(string(aheadOut)))
+
+	if ahead > 0 && behind > 0 {
+		return 0, 0, fmt.Errorf("store has diverged from remote — resolve manually with git in %s", s.path)
+	}
+
+	if behind > 0 {
+		if out, perr := exec.Command("git", "-C", s.path, "pull", "--ff-only").CombinedOutput(); perr != nil {
+			return 0, 0, fmt.Errorf("pull failed: %s", strings.TrimSpace(string(out)))
+		}
+		return 0, behind, nil
+	}
+
+	if ahead > 0 {
+		if out, perr := exec.Command("git", "-C", s.path, "push").CombinedOutput(); perr != nil {
+			return 0, 0, fmt.Errorf("push failed: %s", strings.TrimSpace(string(out)))
+		}
+		return ahead, 0, nil
+	}
+
+	return 0, 0, nil
 }
