@@ -6,8 +6,6 @@ Minimize brain cycles spent on todos. Free your mind to think big.
 
 See [VISION.md](VISION.md) for the full picture.
 
-See [DESIGN.md](DESIGN.md) for the design.
-
 ## Development
 
 **Prerequisites:** Go 1.21+
