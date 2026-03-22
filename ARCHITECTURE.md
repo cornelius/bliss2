@@ -4,7 +4,7 @@
 
 ```
 cmd/bliss/main.go       — entry point
-cmd/bliss/e2e/          — e2e tests (invoke the real binary, verify user contract)
+e2e/                    — e2e tests (invoke the real binary, verify user contract)
 internal/store/         — store access, git operations
 internal/context/       — resolving .bliss-context markers
 internal/todo/          — todo file read/write
