@@ -1142,7 +1142,7 @@ func statusListCounts(s *store.Store, contextUUID string) []listCount {
 		}
 	}
 
-	incomingCount := statusInboxCount(s, contextUUID)
+	incomingCount := statusIncomingCount(s, contextUUID)
 	if incomingCount > 0 {
 		counts = append(counts, listCount{"incoming", incomingCount})
 	}
@@ -1150,7 +1150,7 @@ func statusListCounts(s *store.Store, contextUUID string) []listCount {
 	return counts
 }
 
-func statusInboxCount(s *store.Store, contextUUID string) int {
+func statusIncomingCount(s *store.Store, contextUUID string) int {
 	todos, err := getIncomingTodos(s, contextUUID)
 	if err != nil {
 		return 0

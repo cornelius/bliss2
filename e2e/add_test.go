@@ -58,7 +58,7 @@ func TestAdd_titleWithDoubleQuotes(t *testing.T) {
 	}
 }
 
-func TestAdd_toInbox(t *testing.T) {
+func TestAdd_toIncoming(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 

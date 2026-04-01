@@ -134,7 +134,7 @@ func TestList_semanticOrder(t *testing.T) {
 	}
 }
 
-func TestList_unlistedTodosInInbox(t *testing.T) {
+func TestList_unlistedTodosInIncoming(t *testing.T) {
 	home, env := blissEnv(t)
 	proj := filepath.Join(home, "proj")
 	os.MkdirAll(proj, 0755)
