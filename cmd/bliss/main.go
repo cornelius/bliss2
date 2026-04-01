@@ -50,7 +50,7 @@ func main() {
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:          "bliss",
-		Short:        "bliss — a personal todo management tool",
+		Short:        "∴ bliss — a personal todo management tool",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
@@ -481,7 +481,7 @@ func listCmd() *cobra.Command {
 			}
 
 			// ── header ───────────────────────────────────────────────────
-			fmt.Print(stTitle.Render("bliss list") + "  ")
+			fmt.Print(stTitle.Render("∴ bliss list") + "  ")
 			if listCtxName == "" {
 				fmt.Print(stMuted.Render("Personal"))
 				if filterList != "" {
@@ -594,7 +594,7 @@ func listCmd() *cobra.Command {
 // No position numbers are assigned (spans multiple contexts).
 func listAll(s *store.Store) error {
 	// Header
-	fmt.Println(stTitle.Render("bliss list --all"))
+	fmt.Println(stTitle.Render("∴ bliss list --all"))
 
 	contextNames, err := s.ListContextNames()
 	if err != nil {
@@ -1064,7 +1064,7 @@ func statusCmd() *cobra.Command {
 
 			// ── header ───────────────────────────────────────────────────
 			date := stMuted.Render(time.Now().Format("Mon Jan 02, 2006"))
-			fmt.Println(stTitle.Render("bliss status") + "  " + date)
+			fmt.Println(stTitle.Render("∴ bliss status") + "  " + date)
 			fmt.Println()
 
 			// ── contexts ─────────────────────────────────────────────────
@@ -1236,12 +1236,12 @@ func historyCmd() *cobra.Command {
 			// ── header ────────────────────────────────────────────────────
 			date := stMuted.Render(time.Now().Format("Mon Jan 02, 2006"))
 			if all {
-				fmt.Println(stTitle.Render("bliss history --all") + "  " + date)
+				fmt.Println(stTitle.Render("∴ bliss history --all") + "  " + date)
 			} else if personal || contextName == "" {
-				fmt.Println(stTitle.Render("bliss history") + "  " + stMuted.Render("Personal") + "  " + date)
+				fmt.Println(stTitle.Render("∴ bliss history") + "  " + stMuted.Render("Personal") + "  " + date)
 			} else {
 				ctxPath, _ := s.ReadContextMeta(contextName)
-				fmt.Println(stTitle.Render("bliss history") + "  " +
+				fmt.Println(stTitle.Render("∴ bliss history") + "  " +
 					stMuted.Render("Context:") + " " + stBold.Render(contextName) +
 					"  " + stMuted.Render("Path:") + " " + stPath.Render(shortenHomePath(ctxPath)) +
 					"  " + date)

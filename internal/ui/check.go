@@ -331,7 +331,7 @@ func (m CheckModel) View() string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(styleHeader.Render("bliss check") + styleMuted.Render("  ↑↓ navigate  enter edit  space/d complete  s section  q quit") + "\n\n")
+	sb.WriteString(styleHeader.Render("∴ bliss check") + styleMuted.Render("  ↑↓ navigate  enter edit  space/d complete  s section  q quit") + "\n\n")
 
 	if m.err != nil {
 		sb.WriteString(fmt.Sprintf("error: %v\n", m.err))

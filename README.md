@@ -1,4 +1,4 @@
-# Bliss 2
+# ∴ bliss
 
 Peace of mind with your personal todos. Note them down when something occurs to you. Bring them back when needed. With context. With minimal effort.
 

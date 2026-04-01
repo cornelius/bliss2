@@ -378,7 +378,7 @@ func (m GroomModel) View() string {
 	var sb strings.Builder
 
 	listName := m.currentListName()
-	sb.WriteString(styleHeader.Render("bliss groom") + "  " + styleHeader.Render("["+listName+"]") + "\n")
+	sb.WriteString(styleHeader.Render("∴ bliss groom") + "  " + styleHeader.Render("["+listName+"]") + "\n")
 
 	sb.WriteString(styleMuted.Render("tab/shift-tab switch  d/space complete  q quit") + "\n")
 	for i, name := range m.listOrder {
