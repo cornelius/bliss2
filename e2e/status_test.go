@@ -93,3 +93,20 @@ func TestStatus_stalePathReported(t *testing.T) {
 		t.Errorf("output %q missing stale indicator", out)
 	}
 }
+
+func TestStatus_emptyContextShown(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "myproject")
+	os.MkdirAll(proj, 0755)
+
+	bliss(t, proj, env, "init")
+	// No todos added — context is empty.
+
+	out, err := bliss(t, proj, env, "status")
+	if err != nil {
+		t.Fatalf("status: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "myproject") {
+		t.Errorf("output %q missing context name for empty context", out)
+	}
+}

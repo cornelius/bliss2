@@ -1085,9 +1085,6 @@ func statusCmd() *cobra.Command {
 			sort.Slice(rows, func(i, j int) bool { return rows[i].name < rows[j].name })
 			for _, r := range rows {
 				counts := statusListCounts(s, r.name)
-				if len(counts) == 0 {
-					continue
-				}
 				fmt.Println(renderContextRow(r.active, r.name, r.path, counts))
 			}
 
