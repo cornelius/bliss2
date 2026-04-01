@@ -4,6 +4,8 @@ What git is to code, bliss is to todos.
 
 If you have something to do, do it with bliss.
 
+> ∴ bliss - peace of mind with your personal todos
+
 ## Philosophy
 
 Minimize brain cycles spent on todos. Free your mind to think big. Have all the details ready when needed, only when needed.
@@ -20,7 +22,7 @@ There is another dimension to what you have to do. That could be where you are, 
 
 Scene could automatically be deduced from the circumstances of adding a todo. With intelligence. E.g. when entering something at the computer, a default scene could be "computer". Same for mobile. Or depending on the time of day. When entering a private todo at work time, the scene could be "tonight".
 
-## What Bliss should be
+## What bliss should be
 
 Todos stored as plain text files — version controlled, shareable, readable by humans and machines in the same way. Clients to work with the lists. A protocol to store and sync, locally and distributed. Context and enough meta information to make sense of a todo forever. An intelligent way to resurface todos when you are ready to work on them. A convenient way to manage and prioritize.
 
@@ -28,9 +30,9 @@ Should serve as personal Kanban. As todo list for a project. As a reminder for c
 
 Clients, format, and storage should be flexible and workable. Robust for manual and automatic handling. Building blocks which can be orchestrated into bigger systems and extended in a modular way.
 
-CLI client, Android client, GUI, serving different use cases and audiences. Tied together through the format and architecture of Bliss.
+CLI client, Android client, GUI, serving different use cases and audiences. Tied together through the format and architecture of bliss.
 
-## What Bliss should not be
+## What bliss should not be
 
 Bliss is not a project management system. It's not meant to organize a team or to share tasks with other people. It's for you, personally.
 
