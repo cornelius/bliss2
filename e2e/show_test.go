@@ -30,7 +30,7 @@ func TestShow_noHeader(t *testing.T) {
 	}
 }
 
-func TestShow_inboxOmittedWhenEmpty(t *testing.T) {
+func TestShow_incomingOmittedWhenEmpty(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
@@ -40,26 +40,26 @@ func TestShow_inboxOmittedWhenEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("show: %v\n%s", err, out)
 	}
-	if strings.Contains(out, "inbox") {
-		t.Errorf("output %q must not show inbox when empty", out)
+	if strings.Contains(out, "incoming") {
+		t.Errorf("output %q must not show incoming when empty", out)
 	}
 }
 
-func TestShow_inboxShownWhenNonEmpty(t *testing.T) {
+func TestShow_incomingShownWhenNonEmpty(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
-	bliss(t, dir, env, "add", "Inbox task")
+	bliss(t, dir, env, "add", "Incoming task")
 
 	out, err := bliss(t, dir, env, "show")
 	if err != nil {
 		t.Fatalf("show: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "inbox") {
-		t.Errorf("output %q must show inbox when non-empty", out)
+	if !strings.Contains(out, "incoming") {
+		t.Errorf("output %q must show incoming when non-empty", out)
 	}
-	if !strings.Contains(out, "Inbox task") {
-		t.Errorf("output %q missing inbox task title", out)
+	if !strings.Contains(out, "Incoming task") {
+		t.Errorf("output %q missing incoming task title", out)
 	}
 }
 

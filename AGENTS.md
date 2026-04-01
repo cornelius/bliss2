@@ -40,7 +40,7 @@ bliss done <n>                  # complete a todo
 bliss history                   # see recent changes
 ```
 
-Current lists: `next`, `groom`, inbox (virtual — todos not in any list).
+Current lists: `next`, `groom`, incoming (virtual — todos not in any list).
 
 ## Code conventions
 

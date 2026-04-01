@@ -18,10 +18,10 @@ no filters — if a todo exists, it appears.
 
 | Invocation | Scope |
 |---|---|
-| `bliss list` (inside context) | Context lists only, inbox included |
+| `bliss list` (inside context) | Context lists only, incoming included |
 | `bliss list` (outside context) | Personal lists only |
 | `bliss list <name>` | Single named list only |
-| `bliss list inbox` | Floating todos not in any named list |
+| `bliss list incoming` | Floating todos not in any named list |
 | `bliss list --personal` | Personal lists only, regardless of context |
 | `bliss list --personal <name>` | Single personal list |
 | `bliss list --all` | All contexts + personal, no position numbers |
@@ -31,7 +31,7 @@ no filters — if a todo exists, it appears.
 - Which context (or personal scope) the output is scoped to — the output must
   be self-contained and readable in scrollback without knowing the cwd.
 - All lists in the current scope, in semantic order:
-  today → this-week → next-week → later → custom lists → bugs → inbox.
+  today → this-week → next-week → later → custom lists → bugs → incoming.
 - Items within each list in list-file order, preserving section structure.
 - Position numbers on every todo item (except `--all` which spans contexts).
 

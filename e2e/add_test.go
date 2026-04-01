@@ -62,14 +62,14 @@ func TestAdd_toInbox(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir()
 
-	out, err := bliss(t, dir, env, "add", "Inbox task")
+	out, err := bliss(t, dir, env, "add", "Incoming task")
 	if err != nil {
 		t.Fatalf("add: %v", err)
 	}
 	if !strings.Contains(out, "Added:") {
 		t.Errorf("output %q missing 'Added:' label", out)
 	}
-	if !strings.Contains(out, "Inbox task") {
+	if !strings.Contains(out, "Incoming task") {
 		t.Errorf("output %q missing title", out)
 	}
 	if strings.Contains(out, "[") {

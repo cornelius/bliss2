@@ -21,8 +21,8 @@ func TestStatus_personalMode(t *testing.T) {
 	if !strings.Contains(out, "Personal:") {
 		t.Errorf("output %q missing 'Personal:' label", out)
 	}
-	if !strings.Contains(out, "inbox") {
-		t.Errorf("output %q missing inbox count", out)
+	if !strings.Contains(out, "incoming") {
+		t.Errorf("output %q missing incoming count", out)
 	}
 	if !strings.Contains(out, "no remote") {
 		t.Errorf("output %q missing git sync line", out)
@@ -48,8 +48,8 @@ func TestStatus_insideContext(t *testing.T) {
 	if !strings.Contains(out, "myproject") {
 		t.Errorf("output %q missing context path", out)
 	}
-	if !strings.Contains(out, "inbox") {
-		t.Errorf("output %q missing inbox", out)
+	if !strings.Contains(out, "incoming") {
+		t.Errorf("output %q missing incoming", out)
 	}
 	if !strings.Contains(out, "no remote") {
 		t.Errorf("output %q missing git sync line", out)

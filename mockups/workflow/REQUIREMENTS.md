@@ -25,7 +25,7 @@ Each command answers a different question:
 
 | Command | Variant | Output |
 |---|---|---|
-| add | inbox (no list) | `Added: title` |
+| add | incoming (no list) | `Added: title` |
 | add | to named list | `Added to listname: title` |
 | done | — | `Done: title` |
 | move | — | `Moved to listname: title` |

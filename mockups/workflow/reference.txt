@@ -12,7 +12,7 @@
 
 # ── bliss add ────────────────────────────────────────────────────────────────
 
-# No list (goes to inbox):
+# No list (goes to incoming):
 Added: Check in with security team
 
 # To a named list:

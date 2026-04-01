@@ -102,10 +102,10 @@ func TestStatusShortenHomePath(t *testing.T) {
 }
 
 // TestStatusSortedCounts verifies the semantic ordering:
-// today → this-week → next-week → later → custom → bugs → inbox.
+// today → this-week → next-week → later → custom → bugs → incoming.
 func TestStatusSortedCounts(t *testing.T) {
 	input := []listCount{
-		{"inbox", 1},
+		{"incoming", 1},
 		{"bugs", 2},
 		{"my-feature", 3},
 		{"later", 4},
@@ -114,7 +114,7 @@ func TestStatusSortedCounts(t *testing.T) {
 		{"today", 7},
 	}
 	got := sortedCounts(input)
-	want := []string{"today", "this-week", "next-week", "later", "my-feature", "bugs", "inbox"}
+	want := []string{"today", "this-week", "next-week", "later", "my-feature", "bugs", "incoming"}
 	for i, w := range want {
 		if got[i].name != w {
 			t.Errorf("sortedCounts[%d] = %q, want %q", i, got[i].name, w)

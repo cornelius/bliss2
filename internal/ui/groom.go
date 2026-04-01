@@ -12,11 +12,11 @@ import (
 )
 
 // DefaultKanbanOrder defines the default list order for grooming.
-var DefaultKanbanOrder = []string{"inbox", "today", "this-week", "next-week", "later"}
+var DefaultKanbanOrder = []string{"incoming", "today", "this-week", "next-week", "later"}
 
 // ListKeyMap maps keyboard shortcuts to list names.
 var ListKeyMap = map[string]string{
-	"i": "inbox",
+	"i": "incoming",
 	"t": "today",
 	"w": "this-week",
 	"n": "next-week",
@@ -102,7 +102,7 @@ type groomErrMsg struct{ err error }
 func buildGroomItems(s *store.Store, contextUUID, listName string, touched map[string]bool) ([]GroomItem, error) {
 	var items []GroomItem
 
-	if listName == "inbox" {
+	if listName == "incoming" {
 		todos, err := s.ListTodos(contextUUID)
 		if err != nil {
 			return nil, err
@@ -314,8 +314,8 @@ func (m GroomModel) moveTodoToList(listName string) (GroomModel, tea.Cmd) {
 }
 
 // moveTodoToListSection moves the current todo to the given list and section.
-// sectionIdx -1 appends to end. "inbox" is the virtual inbox: moving there
-// just removes from all named lists so the todo falls back into the inbox.
+// sectionIdx -1 appends to end. "incoming" is the virtual incoming: moving there
+// just removes from all named lists so the todo falls back into the incoming.
 func (m GroomModel) moveTodoToListSection(listName string, sectionIdx int) (GroomModel, tea.Cmd) {
 	t := m.currentTodo()
 	if t == nil {
@@ -328,7 +328,7 @@ func (m GroomModel) moveTodoToListSection(listName string, sectionIdx int) (Groo
 		return m, nil
 	}
 
-	if listName != "inbox" {
+	if listName != "incoming" {
 		l, err := m.store.ReadList(m.contextUUID, listName)
 		if err != nil {
 			m.err = err

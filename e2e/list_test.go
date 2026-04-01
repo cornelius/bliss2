@@ -98,7 +98,7 @@ func TestList_semanticOrder(t *testing.T) {
 	bliss(t, proj, env, "add", "Bug fix", "-l", "bugs")
 	bliss(t, proj, env, "add", "This week task", "-l", "this-week")
 	bliss(t, proj, env, "add", "Today task", "-l", "today")
-	bliss(t, proj, env, "add", "Inbox item")
+	bliss(t, proj, env, "add", "Incoming item")
 
 	out, err := bliss(t, proj, env, "list")
 	if err != nil {
@@ -118,9 +118,9 @@ func TestList_semanticOrder(t *testing.T) {
 	todayLine := indexOf("today")
 	thisWeekLine := indexOf("this-week")
 	bugsLine := indexOf("bugs")
-	inboxLine := indexOf("inbox")
+	incomingLine := indexOf("incoming")
 
-	if todayLine < 0 || thisWeekLine < 0 || bugsLine < 0 || inboxLine < 0 {
+	if todayLine < 0 || thisWeekLine < 0 || bugsLine < 0 || incomingLine < 0 {
 		t.Fatalf("missing expected sections:\n%s", out)
 	}
 	if todayLine >= thisWeekLine {
@@ -129,8 +129,8 @@ func TestList_semanticOrder(t *testing.T) {
 	if thisWeekLine >= bugsLine {
 		t.Errorf("this-week (line %d) should appear before bugs (line %d)", thisWeekLine, bugsLine)
 	}
-	if bugsLine >= inboxLine {
-		t.Errorf("bugs (line %d) should appear before inbox (line %d)", bugsLine, inboxLine)
+	if bugsLine >= incomingLine {
+		t.Errorf("bugs (line %d) should appear before incoming (line %d)", bugsLine, incomingLine)
 	}
 }
 
@@ -147,13 +147,13 @@ func TestList_unlistedTodosInInbox(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "inbox") {
-		t.Errorf("output should contain 'inbox' section:\n%s", out)
+	if !strings.Contains(out, "incoming") {
+		t.Errorf("output should contain 'incoming' section:\n%s", out)
 	}
-	inboxIdx := strings.Index(out, "inbox")
+	incomingIdx := strings.Index(out, "incoming")
 	taskIdx := strings.Index(out, "Unlisted task")
-	if taskIdx < inboxIdx {
-		t.Errorf("unlisted task should appear after inbox header:\n%s", out)
+	if taskIdx < incomingIdx {
+		t.Errorf("unlisted task should appear after incoming header:\n%s", out)
 	}
 }
 

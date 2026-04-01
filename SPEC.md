@@ -144,11 +144,11 @@ A separator is a line containing only `---`, optionally followed by a section na
 
 Sections allow micro-grouping within a list without creating separate list files. A list can have 1 to 5 sections; up to 9 is the hard limit. Sections have no semantic meaning to the data model — they are a presentation and prioritization aid.
 
-The default personal lists follow the personal Kanban framework: `inbox`, `today`, `this-week`, `next-week`, `later`. These can be customized.
+The default personal lists follow the personal Kanban framework: `incoming`, `today`, `this-week`, `next-week`, `later`. These can be customized.
 
-## Inbox
+## Incoming
 
-Todos that are not referenced by any list file are considered to be in the inbox. There is no explicit inbox file. The inbox is a virtual view — all todos in a context not appearing in any list. Inbox todos are ordered by creation time, derived from git history.
+Todos that are not referenced by any list file are considered to be in the incoming. There is no explicit incoming file. The incoming is a virtual view — all todos in a context not appearing in any list. Incoming todos are ordered by creation time, derived from git history.
 
 ## Ordering and Prioritization
 
@@ -206,9 +206,9 @@ Git was chosen as the storage backend because it provides version history, sync 
 
 Alternative backends (WebDAV, custom server) were considered in the initial design but ruled out. The plain file format remains backend-agnostic in principle, but the CLI is built around git.
 
-### Inbox as a virtual view
+### Incoming as a virtual view
 
-An explicit inbox list file would need to be updated on every todo creation, adding noise to diffs. Defining the inbox as all todos not referenced by any named list requires no bookkeeping and produces no extra diff noise when a todo is created. The ordering of inbox todos by git commit time is a natural and automatic consequence of the storage model.
+An explicit incoming list file would need to be updated on every todo creation, adding noise to diffs. Defining the incoming as all todos not referenced by any named list requires no bookkeeping and produces no extra diff noise when a todo is created. The ordering of incoming todos by git commit time is a natural and automatic consequence of the storage model.
 
 ### Completing as deletion
 

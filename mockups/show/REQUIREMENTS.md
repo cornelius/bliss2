@@ -20,7 +20,7 @@ personal todos. The difference is in filtering and default visibility:
 
 | Behavior                        | bliss list | bliss show |
 |---------------------------------|------------|------------|
-| Inbox shown by default          | yes        | no (omitted unless non-empty) |
+| Incoming shown by default          | yes        | no (omitted unless non-empty) |
 | Deferred todos shown            | yes        | no (future) |
 | Scene filtering (personal)      | no         | yes (future) |
 
@@ -34,14 +34,14 @@ personal todos. The difference is in filtering and default visibility:
 
 - UUIDs
 - Empty named lists
-- Inbox unless it contains items
+- Incoming unless it contains items
 - Brackets around list names
 - Todos from a different domain (no personal in context mode, no context in personal mode)
 
 ## Variants
 
-1. `bliss show` — inside a context: context lists only (inbox hidden unless non-empty)
-2. `bliss show` — outside any context (personal mode): personal lists only (inbox hidden unless non-empty)
+1. `bliss show` — inside a context: context lists only (incoming hidden unless non-empty)
+2. `bliss show` — outside any context (personal mode): personal lists only (incoming hidden unless non-empty)
 3. `bliss show <list-name>` — shows only the named list (context if in context, else personal)
 
 ## Decisions

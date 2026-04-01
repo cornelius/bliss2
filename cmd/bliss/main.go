@@ -305,7 +305,7 @@ func addCmd() *cobra.Command {
 
 // listCmd implements `bliss list [list-name]`
 // showCmd implements `bliss show [list-name]`
-// Focus mode: same scoping as bliss list, but inbox is omitted unless non-empty.
+// Focus mode: same scoping as bliss list, but incoming is omitted unless non-empty.
 // Future: will hide deferred todos and apply scene filtering.
 func showCmd() *cobra.Command {
 	var contextFlag string
@@ -343,13 +343,13 @@ func showCmd() *cobra.Command {
 				return s.ReadTodo(contextUUID, uuid)
 			}
 
-			inboxTodos, err := getInboxTodos(s, contextUUID)
+			incomingTodos, err := getIncomingTodos(s, contextUUID)
 			if err != nil {
 				return err
 			}
-			inboxAsList := func() list.List {
-				uuids := make([]string, len(inboxTodos))
-				for i, t := range inboxTodos {
+			incomingAsList := func() list.List {
+				uuids := make([]string, len(incomingTodos))
+				for i, t := range incomingTodos {
 					uuids[i] = t.UUID
 				}
 				return list.List{Sections: []list.Section{{Items: uuids}}}
@@ -373,8 +373,8 @@ func showCmd() *cobra.Command {
 				}
 			}
 
-			if filterList == "inbox" {
-				printFiltered(inboxAsList())
+			if filterList == "incoming" {
+				printFiltered(incomingAsList())
 				return s.WriteSession(session)
 			}
 
@@ -425,8 +425,8 @@ func showCmd() *cobra.Command {
 				}
 				printOne(name, l)
 			}
-			if len(inboxTodos) > 0 {
-				printOne("inbox", inboxAsList())
+			if len(incomingTodos) > 0 {
+				printOne("incoming", incomingAsList())
 			}
 
 			if pos == 1 {
@@ -531,20 +531,20 @@ func listCmd() *cobra.Command {
 				}
 			}
 
-			inboxTodos, err := getInboxTodos(s, listCtxName)
+			incomingTodos, err := getIncomingTodos(s, listCtxName)
 			if err != nil {
 				return err
 			}
-			inboxAsList := func() list.List {
-				uuids := make([]string, len(inboxTodos))
-				for i, t := range inboxTodos {
+			incomingAsList := func() list.List {
+				uuids := make([]string, len(incomingTodos))
+				for i, t := range incomingTodos {
 					uuids[i] = t.UUID
 				}
 				return list.List{Sections: []list.Section{{Items: uuids}}}
 			}
 
-			if filterList == "inbox" {
-				printOne("inbox", inboxAsList(), false)
+			if filterList == "incoming" {
+				printOne("incoming", incomingAsList(), false)
 				return s.WriteSession(session)
 			}
 
@@ -557,7 +557,7 @@ func listCmd() *cobra.Command {
 				return s.WriteSession(session)
 			}
 
-			// No filter: all lists in semantic order, then inbox.
+			// No filter: all lists in semantic order, then incoming.
 			listNames, err := s.ListNames(listCtxName)
 			if err != nil {
 				return err
@@ -572,8 +572,8 @@ func listCmd() *cobra.Command {
 				}
 				printOne(name, l, true)
 			}
-			if len(inboxTodos) > 0 {
-				printOne("inbox", inboxAsList(), true)
+			if len(incomingTodos) > 0 {
+				printOne("incoming", incomingAsList(), true)
 			}
 
 			if pos == 1 {
@@ -658,16 +658,16 @@ func listAll(s *store.Store) error {
 			}
 		}
 
-		inboxTodos, _ := getInboxTodos(s, ctx.name)
-		if len(inboxTodos) > 0 {
+		incomingTodos, _ := getIncomingTodos(s, ctx.name)
+		if len(incomingTodos) > 0 {
 			if !firstList {
 				fmt.Println()
 			}
-			uuids := make([]string, len(inboxTodos))
-			for i, t := range inboxTodos {
+			uuids := make([]string, len(incomingTodos))
+			for i, t := range incomingTodos {
 				uuids[i] = t.UUID
 			}
-			printAllList(ctx.name, "inbox", list.List{Sections: []list.Section{{Items: uuids}}}, true)
+			printAllList(ctx.name, "incoming", list.List{Sections: []list.Section{{Items: uuids}}}, true)
 		}
 	}
 
@@ -693,13 +693,13 @@ func listAll(s *store.Store) error {
 			}
 		}
 
-		personalInbox, _ := getInboxTodos(s, "")
-		if len(personalInbox) > 0 {
+		personalIncoming, _ := getIncomingTodos(s, "")
+		if len(personalIncoming) > 0 {
 			if !firstList {
 				fmt.Println()
 			}
-			fmt.Println(stBold.Render("inbox"))
-			for _, t := range personalInbox {
+			fmt.Println(stBold.Render("incoming"))
+			for _, t := range personalIncoming {
 				fmt.Printf("  %s\n", t.Title)
 			}
 		}
@@ -878,7 +878,7 @@ func groomCmd() *cobra.Command {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			startList := "inbox"
+			startList := "incoming"
 			if len(args) > 0 {
 				startList = args[0]
 			}
@@ -897,8 +897,8 @@ func groomCmd() *cobra.Command {
 func buildCheckItems(s *store.Store, contextUUID, filterList string) ([]ui.CheckItem, error) {
 	var items []ui.CheckItem
 
-	if filterList == "inbox" {
-		todos, err := getInboxTodos(s, contextUUID)
+	if filterList == "incoming" {
+		todos, err := getIncomingTodos(s, contextUUID)
 		if err != nil {
 			return nil, err
 		}
@@ -918,7 +918,7 @@ func buildCheckItems(s *store.Store, contextUUID, filterList string) ([]ui.Check
 		return appendSectionItems(items, l, filterList, contextUUID, resolve), nil
 	}
 
-	// No filter: context lists, then personal lists, then inbox.
+	// No filter: context lists, then personal lists, then incoming.
 	listNames, err := s.ListNames(contextUUID)
 	if err != nil {
 		return nil, err
@@ -952,14 +952,14 @@ func buildCheckItems(s *store.Store, contextUUID, filterList string) ([]ui.Check
 		items = appendSectionItems(items, l, name, "", resolve)
 	}
 
-	inboxTodos, err := getInboxTodos(s, contextUUID)
+	incomingTodos, err := getIncomingTodos(s, contextUUID)
 	if err != nil {
 		return nil, err
 	}
-	if len(inboxTodos) > 0 {
-		items = append(items, ui.CheckItem{SectionHeader: "inbox", IsListHeader: true})
-		for i := range inboxTodos {
-			t := inboxTodos[i]
+	if len(incomingTodos) > 0 {
+		items = append(items, ui.CheckItem{SectionHeader: "incoming", IsListHeader: true})
+		for i := range incomingTodos {
+			t := incomingTodos[i]
 			items = append(items, ui.CheckItem{Todo: &t})
 		}
 	}
@@ -1011,8 +1011,8 @@ func resolveTodo(arg string, s *store.Store, contextUUID string) (string, error)
 	return todoUUID, nil
 }
 
-// getInboxTodos returns todos that are not in any named list.
-func getInboxTodos(s *store.Store, contextUUID string) ([]todo.Todo, error) {
+// getIncomingTodos returns todos that are not in any named list.
+func getIncomingTodos(s *store.Store, contextUUID string) ([]todo.Todo, error) {
 	todos, err := s.ListTodos(contextUUID)
 	if err != nil {
 		return nil, err
@@ -1034,13 +1034,13 @@ func getInboxTodos(s *store.Store, contextUUID string) ([]todo.Todo, error) {
 		}
 	}
 
-	var inbox []todo.Todo
+	var incoming []todo.Todo
 	for _, t := range todos {
 		if !listedUUIDs[t.UUID] {
-			inbox = append(inbox, t)
+			incoming = append(incoming, t)
 		}
 	}
-	return inbox, nil
+	return incoming, nil
 }
 
 func statusCmd() *cobra.Command {
@@ -1142,16 +1142,16 @@ func statusListCounts(s *store.Store, contextUUID string) []listCount {
 		}
 	}
 
-	inboxCount := statusInboxCount(s, contextUUID)
-	if inboxCount > 0 {
-		counts = append(counts, listCount{"inbox", inboxCount})
+	incomingCount := statusInboxCount(s, contextUUID)
+	if incomingCount > 0 {
+		counts = append(counts, listCount{"incoming", incomingCount})
 	}
 
 	return counts
 }
 
 func statusInboxCount(s *store.Store, contextUUID string) int {
-	todos, err := getInboxTodos(s, contextUUID)
+	todos, err := getIncomingTodos(s, contextUUID)
 	if err != nil {
 		return 0
 	}
@@ -1339,7 +1339,7 @@ func sortedCounts(counts []listCount) []listCount {
 }
 
 // listSortKey returns a sort priority for semantic list ordering:
-// today → this-week → next-week → later → custom → bugs → inbox.
+// today → this-week → next-week → later → custom → bugs → incoming.
 func listSortKey(name string) int {
 	switch name {
 	case "today":
@@ -1352,7 +1352,7 @@ func listSortKey(name string) int {
 		return 3
 	case "bugs":
 		return 5
-	case "inbox":
+	case "incoming":
 		return 9
 	default:
 		return 4 // custom lists after "later", before "bugs"

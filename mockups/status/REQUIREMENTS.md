@@ -32,6 +32,6 @@ Always shown, even when there is nothing to report:
 
 - One context per line (or one compact block — no multi-line per context)
 - Lists appear in a consistent, semantic order:
-  today → this-week → next-week → later → [custom] → bugs → inbox
+  today → this-week → next-week → later → [custom] → bugs → incoming
 - Lists with 0 todos: omit the list, or show a dash — do not clutter
 - Must read clearly without color

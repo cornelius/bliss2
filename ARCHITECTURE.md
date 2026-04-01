@@ -140,9 +140,9 @@ Guidelines:
 
 `bliss done N` and `bliss move N` resolve position numbers through the session file. Always run `bliss list` before `bliss done` or `bliss move` so positions are up to date.
 
-## Inbox
+## Incoming
 
-The inbox is a virtual view, not a stored list. `getInboxTodos` returns all todos in the context that are not referenced by any named list. This means a todo is automatically "in the inbox" until it is added to a list.
+The incoming is a virtual view, not a stored list. `getIncomingTodos` returns all todos in the context that are not referenced by any named list. This means a todo is automatically "in the incoming" until it is added to a list.
 
 ## Sections
 

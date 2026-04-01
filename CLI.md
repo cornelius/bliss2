@@ -113,7 +113,7 @@ Captures a new todo in the current context.
 
 - If a title is given as arguments, they are joined with spaces. Because the title is passed through the shell, special characters (apostrophes, quotes) must be quoted: `bliss add "Fix John's bug"`.
 - If no arguments are given, bliss reads the title from stdin. In an interactive terminal it prints a `Title:` prompt; when stdin is a pipe it reads one line silently. This avoids shell quoting entirely for titles with special characters.
-- By default the todo lands in the inbox (not added to any list).
+- By default the todo lands in the incoming (not added to any list).
 - `--list/-l <name>` adds the todo directly to a named list, appended to the end.
 - `--urgent` places the todo at the top of the target list. Only valid in combination with `--list`.
 - `--defer <time>` defers the todo until the given time. The todo is hidden from `bliss show` until then. See `bliss defer` for supported time formats.
@@ -136,7 +136,7 @@ Shows todos that are relevant right now — the primary daily-use command.
 - Filters by current context (directory-based, same as `bliss list`).
 - Hides todos whose `defer` time is in the future (see `bliss defer`).
 - If a scene is set (see `bliss scene`), personal todos are further filtered to those matching the active scene. Project todos are not filtered by scene.
-- Without arguments: shows context lists, then personal lists. Inbox is omitted unless it contains items.
+- Without arguments: shows context lists, then personal lists. Incoming is omitted unless it contains items.
 - With a list name: shows only that list, applying the same filters.
 - Writes a session mapping like `bliss list`, so `bliss done` and `bliss move` work the same way.
 
@@ -151,11 +151,11 @@ bliss show today
 
 Displays todos with position numbers — the full, unfiltered view.
 
-- Without arguments, inside a context: shows context lists only, inbox included.
+- Without arguments, inside a context: shows context lists only, incoming included.
 - Without arguments, outside any context: shows personal lists only.
 - `--personal/-p`: shows personal lists regardless of context. Can be combined with a list name.
 - With a list name: shows only that list.
-- `inbox` is a valid list name and shows floating todos not in any named list.
+- `incoming` is a valid list name and shows floating todos not in any named list.
 - `--all`: shows all contexts and personal lists in one view, with no position numbers. Spans multiple contexts so position numbers are not meaningful.
 - Writes a session mapping (`~/.bliss2/session.txt`) of position numbers to UUIDs. This mapping is the basis for `bliss done` and `bliss move`.
 - Position numbers are **stable within a session**: completing todo 5 does not shift todo 6 to position 5. The session is replaced only when `bliss list` is run again. To complete multiple todos, use each one's original position number from the last `bliss list` output.
@@ -163,9 +163,9 @@ Displays todos with position numbers — the full, unfiltered view.
 ```
 bliss list
 bliss list today
-bliss list inbox
+bliss list incoming
 bliss list --personal
-bliss list --personal inbox
+bliss list --personal incoming
 bliss list --all
 ```
 
@@ -299,7 +299,7 @@ Interactive commands take over the terminal and allow navigation and action via 
 
 Interactive view of a single list for navigating and completing todos.
 
-- Without arguments: shows all todos in the current context (context lists first, personal lists, inbox last).
+- Without arguments: shows all todos in the current context (context lists first, personal lists, incoming last).
 - With a list name: shows only that list.
 - Does not support multi-list switching or touched state — use `bliss groom` for that.
 - **TODO:** add `--context/-c` flag for consistency with other commands (currently relies on CWD-based context detection only).
@@ -313,14 +313,14 @@ Navigation:
 ```
 bliss check
 bliss check today
-bliss check inbox
+bliss check incoming
 ```
 
 #### `bliss groom [list-name]`
 
 Interactive grooming mode for organizing todos across lists.
 
-- Without arguments: starts with the inbox.
+- Without arguments: starts with the incoming.
 - With a list name: starts with that list.
 - Shows one list at a time. The current list fills the view with todos in order including section separators.
 - Todos already acted on in the current session are marked as touched and not shown again, even if they appear in another list during the session. Touched state is in-memory only and is lost when grooming ends.
@@ -330,7 +330,7 @@ Interactive grooming mode for organizing todos across lists.
 
 The default personal Kanban lists are shown in this order:
 
-1. Inbox
+1. Incoming
 2. Today
 3. This Week
 4. Next Week
@@ -389,9 +389,9 @@ Each action in `bliss check` or `bliss groom` writes to disk immediately so that
 
 Both are interactive but serve different purposes. `bliss check` is for quickly navigating and completing todos in a single list — a lightweight view. `bliss groom` is for a full grooming session across multiple lists with touched state tracking. Keeping them separate keeps each command focused and avoids a complex mode-switching interface in a single command.
 
-### Grooming starts with inbox
+### Grooming starts with incoming
 
-The natural grooming flow is processing new, unorganized todos first, then reviewing existing lists. Starting with the inbox reflects this and encourages a GTD-style "capture first, organize later" workflow.
+The natural grooming flow is processing new, unorganized todos first, then reviewing existing lists. Starting with the incoming reflects this and encourages a GTD-style "capture first, organize later" workflow.
 
 ### Touched state is in-memory only
 
@@ -403,4 +403,4 @@ Opening an external editor (`$EDITOR`) for title editing would be a context swit
 
 ### `--urgent` only with `--list`
 
-The inbox has no sequence file — its order is determined by git commit time. Placing a todo at the top of the inbox is therefore not possible without creating an explicit inbox sequence file, which would add complexity. `--urgent` is only meaningful for named lists.
+The incoming has no sequence file — its order is determined by git commit time. Placing a todo at the top of the incoming is therefore not possible without creating an explicit incoming sequence file, which would add complexity. `--urgent` is only meaningful for named lists.

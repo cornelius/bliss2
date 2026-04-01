@@ -17,7 +17,7 @@
 #   2-digit zone, unnamed:  " ───"
 #   --all (no numbers):     "  ──" / "  ── name"
 #
-# List order: today → this-week → next-week → later → [custom] → bugs → inbox
+# List order: today → this-week → next-week → later → [custom] → bugs → incoming
 # Empty lists are omitted.
 
 
@@ -49,7 +49,7 @@ bugs
  ─── nice to fix
  12  Race condition in concurrent token refresh
 
-inbox
+incoming
  13  Check in with DevOps about K8s quota increase
  ───
  14  Reply to sec audit findings email
@@ -65,9 +65,9 @@ bliss list  Context: api  List: this-week  Path: /tmp/bliss-test/api
   3  Add integration tests for login flow
 
 
-# ── bliss list inbox ──────────────────────────────────────────────────────────
+# ── bliss list incoming ──────────────────────────────────────────────────────────
 
-bliss list  Context: api  List: inbox  Path: /tmp/bliss-test/api
+bliss list  Context: api  List: incoming  Path: /tmp/bliss-test/api
 
   1  Check in with DevOps about K8s quota increase
   2  Reply to sec audit findings email
@@ -88,7 +88,7 @@ someday
   6  Try out Ghostty terminal
   7  Set up home NAS with ZFS
 
-inbox
+incoming
   8  Call landlord about heating
   9  Buy birthday gift for mom
 
@@ -125,7 +125,7 @@ bugs
   ─── nice to fix
   Race condition in concurrent token refresh
 
-inbox
+incoming
   Check in with DevOps about K8s quota increase
   Reply to sec audit findings email
 
@@ -144,7 +144,7 @@ bugs
   Dropdown closes on outside click in Safari
   Chart tooltip misaligned on retina displays
 
-inbox
+incoming
   Ask design for updated error state illustrations
   Sync with PM on Q2 roadmap priorities
 
@@ -159,7 +159,7 @@ this-week
   ── review
   Write runbook for on-call rotation
 
-inbox
+incoming
   Bump base Docker images to Debian bookworm
   Check Dependabot alerts on infra repo
 
@@ -179,7 +179,7 @@ bugs
   Push notification not delivered on Android 14
   Keyboard covers input on older iPhones
 
-inbox
+incoming
   Reply to App Store review about login issue
   Check analytics drop on v2.3 release
 
@@ -196,6 +196,6 @@ someday
   Try out Ghostty terminal
   Set up home NAS with ZFS
 
-inbox
+incoming
   Call landlord about heating
   Buy birthday gift for mom

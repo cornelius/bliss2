@@ -3,7 +3,7 @@
 # Focus mode: same scoping as bliss list, filtered for action.
 # Key differences from bliss list:
 #   - No header line, ever.
-#   - Inbox omitted unless non-empty.
+#   - Incoming omitted unless non-empty.
 #   - Filtered view (bliss show <list>): no list name, no indent.
 #   - Empty state: "All done. Nothing left to do." (stMuted)
 #
@@ -36,12 +36,12 @@ later
   3  Read "Deep Work"
 
 
-# ── bliss show (inbox non-empty — shown at end) ───────────────────────────────
+# ── bliss show (incoming non-empty — shown at end) ───────────────────────────────
 
 today
   1  Fix the deploy pipeline
 
-inbox
+incoming
   2  Uncategorised new task
   3  Another floating todo
 

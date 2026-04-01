@@ -20,7 +20,7 @@ func TestListSortKey(t *testing.T) {
 		{"my-feature", 4},
 		{"sprint-1", 4},
 		{"bugs", 5},
-		{"inbox", 9},
+		{"incoming", 9},
 	}
 	for _, tc := range cases {
 		got := listSortKey(tc.name)
@@ -31,9 +31,9 @@ func TestListSortKey(t *testing.T) {
 }
 
 func TestSortListNames(t *testing.T) {
-	input := []string{"inbox", "bugs", "sprint-1", "later", "next-week", "this-week", "today"}
+	input := []string{"incoming", "bugs", "sprint-1", "later", "next-week", "this-week", "today"}
 	got := sortListNames(input)
-	want := []string{"today", "this-week", "next-week", "later", "sprint-1", "bugs", "inbox"}
+	want := []string{"today", "this-week", "next-week", "later", "sprint-1", "bugs", "incoming"}
 	if len(got) != len(want) {
 		t.Fatalf("sortListNames returned %d items, want %d: %v", len(got), len(want), got)
 	}

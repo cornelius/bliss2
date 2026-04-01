@@ -115,7 +115,7 @@ func TestMove_urgent(t *testing.T) {
 
 	bliss(t, dir, env, "add", "First in later", "-l", "later")
 	bliss(t, dir, env, "add", "Second in later", "-l", "later")
-	bliss(t, dir, env, "add", "Move me urgent") // lands in inbox
+	bliss(t, dir, env, "add", "Move me urgent") // lands in incoming
 	bliss(t, dir, env, "list")
 
 	out, err := bliss(t, dir, env, "move", "3", "-l", "later", "--urgent")
