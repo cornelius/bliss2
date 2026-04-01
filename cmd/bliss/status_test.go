@@ -14,16 +14,16 @@ import (
 // We measure this by rendering rows with no counts — when counts are empty
 // the rendered string is exactly the fixed-width prefix.
 func TestStatusAlignment(t *testing.T) {
-	const wantWidth = 44
+	const wantWidth = 45
 
 	cases := []struct {
 		name string
 		row  string
 	}{
-		{"active context", renderContextRow(true, "api", "/some/path", nil)},
-		{"inactive context", renderContextRow(false, "frontend", "/other/path", nil)},
-		{"personal (inactive)", renderPersonalRow(false, nil)},
-		{"personal (active)", renderPersonalRow(true, nil)},
+		{"active context", renderContextRow(true, "api", "/some/path", nil, 10)},
+		{"inactive context", renderContextRow(false, "frontend", "/other/path", nil, 10)},
+		{"personal (inactive)", renderPersonalRow(false, nil, 10)},
+		{"personal (active)", renderPersonalRow(true, nil, 10)},
 	}
 
 	for _, tc := range cases {
@@ -38,8 +38,8 @@ func TestStatusAlignment(t *testing.T) {
 
 // TestStatusActiveIndicator verifies the ">" marker appears only on the active row.
 func TestStatusActiveIndicator(t *testing.T) {
-	active := renderContextRow(true, "api", "/path", nil)
-	inactive := renderContextRow(false, "api", "/path", nil)
+	active := renderContextRow(true, "api", "/path", nil, 10)
+	inactive := renderContextRow(false, "api", "/path", nil, 10)
 
 	if !strings.Contains(active, ">") {
 		t.Error("active context row must contain '>'")
@@ -48,8 +48,8 @@ func TestStatusActiveIndicator(t *testing.T) {
 		t.Error("inactive context row must not contain '>'")
 	}
 
-	personalActive := renderPersonalRow(true, nil)
-	personalInactive := renderPersonalRow(false, nil)
+	personalActive := renderPersonalRow(true, nil, 10)
+	personalInactive := renderPersonalRow(false, nil, 10)
 
 	if !strings.Contains(personalActive, ">") {
 		t.Error("active personal row must contain '>'")
@@ -61,8 +61,8 @@ func TestStatusActiveIndicator(t *testing.T) {
 
 // TestStatusLabels verifies each row type carries its entity-type label.
 func TestStatusLabels(t *testing.T) {
-	ctx := renderContextRow(false, "api", "/path", nil)
-	personal := renderPersonalRow(false, nil)
+	ctx := renderContextRow(false, "api", "/path", nil, 10)
+	personal := renderPersonalRow(false, nil, 10)
 
 	if !strings.Contains(ctx, "Context:") {
 		t.Error("context row must contain 'Context:'")
@@ -75,7 +75,7 @@ func TestStatusLabels(t *testing.T) {
 // TestStatusPathTruncation verifies long paths are truncated with an ellipsis.
 func TestStatusPathTruncation(t *testing.T) {
 	longPath := "/very/long/directory/path/that/exceeds/twenty/chars"
-	row := renderContextRow(false, "ctx", longPath, nil)
+	row := renderContextRow(false, "ctx", longPath, nil, 10)
 
 	if strings.Contains(row, longPath) {
 		t.Error("long path should be truncated in the output")

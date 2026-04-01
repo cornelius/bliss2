@@ -1083,15 +1083,24 @@ func statusCmd() *cobra.Command {
 				rows = append(rows, ctxRow{name, path, name == activeName})
 			}
 			sort.Slice(rows, func(i, j int) bool { return rows[i].name < rows[j].name })
+
+			// Compute name column width from the longest slug (minimum 10).
+			nameWidth := 10
+			for _, r := range rows {
+				if len(r.name) > nameWidth {
+					nameWidth = len(r.name)
+				}
+			}
+
 			for _, r := range rows {
 				counts := statusListCounts(s, r.name)
-				fmt.Println(renderContextRow(r.active, r.name, r.path, counts))
+				fmt.Println(renderContextRow(r.active, r.name, r.path, counts, nameWidth))
 			}
 
 			// ── personal ─────────────────────────────────────────────────
 			personalCounts := statusListCounts(s, "")
 			if len(personalCounts) > 0 {
-				fmt.Println(renderPersonalRow(personalMode, personalCounts))
+				fmt.Println(renderPersonalRow(personalMode, personalCounts, nameWidth))
 			}
 
 			// ── store / git ───────────────────────────────────────────────
@@ -1412,8 +1421,9 @@ func renderCounts(counts []listCount) string {
 
 // renderContextRow renders one context line in the status output.
 //
-// Column layout: [12 label+indicator][10 name][20 path][2 sep][list data]
-func renderContextRow(active bool, name, path string, counts []listCount) string {
+// Column layout: [12 label+indicator][nameWidth name][20 path][2 sep][list data]
+// nameWidth is computed by the caller as max(10, longest context name).
+func renderContextRow(active bool, name, path string, counts []listCount, nameWidth int) string {
 	// Label + indicator column (12 chars visual)
 	var prefix string
 	if active {
@@ -1422,8 +1432,8 @@ func renderContextRow(active bool, name, path string, counts []listCount) string
 		prefix = stMuted.Render("Context:") + "    "
 	}
 
-	// Name column (10 chars): bold for active, muted for inactive
-	nameStr := fmt.Sprintf("%-10s", name)
+	// Name column (nameWidth chars): bold for active, muted for inactive
+	nameStr := fmt.Sprintf("%-*s", nameWidth, name)
 	var nameStyled string
 	if active {
 		nameStyled = stBold.Render(nameStr)
@@ -1432,7 +1442,6 @@ func renderContextRow(active bool, name, path string, counts []listCount) string
 	}
 
 	// Path column (20 chars, home-shortened, truncated if needed) + 2-char separator.
-	// Total path+separator = 22 chars, matching the personal row blank span.
 	const pathWidth = 20
 	short := shortenHomePath(path)
 	if len(short) > pathWidth {
@@ -1440,11 +1449,12 @@ func renderContextRow(active bool, name, path string, counts []listCount) string
 	}
 	pathStyled := stPath.Render(fmt.Sprintf("%-*s", pathWidth, short))
 
-	return prefix + nameStyled + pathStyled + "  " + renderCounts(counts)
+	return prefix + nameStyled + " " + pathStyled + "  " + renderCounts(counts)
 }
 
 // renderPersonalRow renders the personal todos line aligned with context rows.
-func renderPersonalRow(active bool, counts []listCount) string {
+// nameWidth must match the value passed to renderContextRow.
+func renderPersonalRow(active bool, counts []listCount, nameWidth int) string {
 	// Label + indicator column (12 chars visual)
 	var prefix string
 	if active {
@@ -1452,8 +1462,8 @@ func renderPersonalRow(active bool, counts []listCount) string {
 	} else {
 		prefix = stMuted.Render("Personal:") + "   "
 	}
-	// Name + path columns are blank (10 + 20 + 2 = 32 spaces)
-	return prefix + strings.Repeat(" ", 32) + renderCounts(counts)
+	// Name + path columns are blank (nameWidth + 1 sep + 20 path + 2 sep)
+	return prefix + strings.Repeat(" ", nameWidth+23) + renderCounts(counts)
 }
 
 // renderSyncStatus formats the sync state value for the Sync: line.
