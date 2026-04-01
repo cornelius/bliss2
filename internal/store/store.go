@@ -579,14 +579,20 @@ func (s *Store) GitSyncStatus() (remote string, ahead, behind int, err error) {
 	if err != nil || len(remotes) == 0 {
 		return "", 0, 0, nil
 	}
-	remote = remotes[0].Config().Name
+	cfg := remotes[0].Config()
+	remoteName := cfg.Name
+	if len(cfg.URLs) > 0 {
+		remote = cfg.URLs[0]
+	} else {
+		remote = remoteName
+	}
 
 	headRef, err := s.repo.Head()
 	if err != nil {
 		return remote, 0, 0, nil
 	}
 
-	remoteRefName := plumbing.NewRemoteReferenceName(remote, headRef.Name().Short())
+	remoteRefName := plumbing.NewRemoteReferenceName(remoteName, headRef.Name().Short())
 	remoteRef, err := s.repo.Reference(remoteRefName, true)
 	if err != nil {
 		// Remote ref doesn't exist (never pushed).
