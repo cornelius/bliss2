@@ -65,7 +65,7 @@ func TestInit(t *testing.T) {
 
 func TestWriteReadTodo(t *testing.T) {
 	s := newTestStore(t)
-	contextUUID := "ctx-uuid-1"
+	contextName := "my-project"
 
 	original := todo.Todo{
 		UUID:  "todo-uuid-1",
@@ -73,11 +73,11 @@ func TestWriteReadTodo(t *testing.T) {
 		Body:  "Bring fish from freezer.",
 	}
 
-	if err := s.WriteTodo(contextUUID, original); err != nil {
+	if err := s.WriteTodo(contextName, original); err != nil {
 		t.Fatalf("WriteTodo: %v", err)
 	}
 
-	got, err := s.ReadTodo(contextUUID, original.UUID)
+	got, err := s.ReadTodo(contextName, original.UUID)
 	if err != nil {
 		t.Fatalf("ReadTodo: %v", err)
 	}
@@ -95,19 +95,19 @@ func TestWriteReadTodo(t *testing.T) {
 
 func TestDeleteTodo(t *testing.T) {
 	s := newTestStore(t)
-	contextUUID := "ctx-uuid-2"
+	contextName := "my-project"
 
 	t1 := todo.Todo{UUID: "todo-a", Title: "Task A"}
-	if err := s.WriteTodo(contextUUID, t1); err != nil {
+	if err := s.WriteTodo(contextName, t1); err != nil {
 		t.Fatalf("WriteTodo: %v", err)
 	}
 
-	if err := s.DeleteTodo(contextUUID, t1.UUID); err != nil {
+	if err := s.DeleteTodo(contextName, t1.UUID); err != nil {
 		t.Fatalf("DeleteTodo: %v", err)
 	}
 
 	// Reading should fail
-	_, err := s.ReadTodo(contextUUID, t1.UUID)
+	_, err := s.ReadTodo(contextName, t1.UUID)
 	if err == nil {
 		t.Error("expected error reading deleted todo, got nil")
 	}
@@ -115,7 +115,7 @@ func TestDeleteTodo(t *testing.T) {
 
 func TestWriteReadList(t *testing.T) {
 	s := newTestStore(t)
-	contextUUID := "ctx-uuid-3"
+	contextName := "my-project"
 
 	original := list.List{
 		Sections: []list.Section{
@@ -124,11 +124,11 @@ func TestWriteReadList(t *testing.T) {
 		},
 	}
 
-	if err := s.WriteList(contextUUID, "today", original); err != nil {
+	if err := s.WriteList(contextName, "today", original); err != nil {
 		t.Fatalf("WriteList: %v", err)
 	}
 
-	got, err := s.ReadList(contextUUID, "today")
+	got, err := s.ReadList(contextName, "today")
 	if err != nil {
 		t.Fatalf("ReadList: %v", err)
 	}
@@ -151,11 +151,11 @@ func TestWriteReadList(t *testing.T) {
 
 func TestCommit(t *testing.T) {
 	s := newTestStore(t)
-	contextUUID := "ctx-commit"
+	contextName := "commit-context"
 
 	// Write a file to commit
 	t1 := todo.Todo{UUID: "todo-commit-1", Title: "Commit test"}
-	if err := s.WriteTodo(contextUUID, t1); err != nil {
+	if err := s.WriteTodo(contextName, t1); err != nil {
 		t.Fatalf("WriteTodo: %v", err)
 	}
 
@@ -282,18 +282,15 @@ func TestOpen_autoInit(t *testing.T) {
 
 func TestWriteReadContextMeta_withPath(t *testing.T) {
 	s := newTestStore(t)
-	uuid := "ctx-meta-test"
+	contextName := "my-project"
 
-	if err := s.WriteContextMeta(uuid, "My Project", "/home/user/my-project"); err != nil {
+	if err := s.WriteContextMeta(contextName, "/home/user/my-project"); err != nil {
 		t.Fatalf("WriteContextMeta: %v", err)
 	}
 
-	name, path, err := s.ReadContextMeta(uuid)
+	path, err := s.ReadContextMeta(contextName)
 	if err != nil {
 		t.Fatalf("ReadContextMeta: %v", err)
-	}
-	if name != "My Project" {
-		t.Errorf("name = %q, want %q", name, "My Project")
 	}
 	if path != "/home/user/my-project" {
 		t.Errorf("path = %q, want %q", path, "/home/user/my-project")
@@ -303,18 +300,15 @@ func TestWriteReadContextMeta_withPath(t *testing.T) {
 func TestReadContextMeta_unknownHost(t *testing.T) {
 	// meta.yaml exists but has no entry for the current host — path should be empty.
 	s := newTestStore(t)
-	uuid := "ctx-other-host"
+	contextName := "other-project"
 
-	dir := s.ContextDir(uuid)
+	dir := s.ContextDir(contextName)
 	os.MkdirAll(dir, 0755)
-	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("name: Other Project\npaths:\n  other-host: /home/other/project\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("paths:\n  other-host: /home/other/project\n"), 0644)
 
-	name, path, err := s.ReadContextMeta(uuid)
+	path, err := s.ReadContextMeta(contextName)
 	if err != nil {
 		t.Fatalf("ReadContextMeta: %v", err)
-	}
-	if name != "Other Project" {
-		t.Errorf("name = %q, want %q", name, "Other Project")
 	}
 	if path != "" {
 		t.Errorf("path = %q, want empty", path)
@@ -324,13 +318,13 @@ func TestReadContextMeta_unknownHost(t *testing.T) {
 func TestWriteContextMeta_preservesOtherHosts(t *testing.T) {
 	// Writing meta on the current host should not remove other hosts' paths.
 	s := newTestStore(t)
-	uuid := "ctx-multi-host"
+	contextName := "shared-project"
 
-	dir := s.ContextDir(uuid)
+	dir := s.ContextDir(contextName)
 	os.MkdirAll(dir, 0755)
-	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("name: Shared Project\npaths:\n  other-host: /home/other/project\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("paths:\n  other-host: /home/other/project\n"), 0644)
 
-	if err := s.WriteContextMeta(uuid, "Shared Project", "/home/cs/project"); err != nil {
+	if err := s.WriteContextMeta(contextName, "/home/cs/project"); err != nil {
 		t.Fatalf("WriteContextMeta: %v", err)
 	}
 
@@ -345,16 +339,16 @@ func TestWriteContextMeta_preservesOtherHosts(t *testing.T) {
 
 func TestWriteContextMeta_createdAt(t *testing.T) {
 	s := newTestStore(t)
-	uuid := "ctx-createdat"
+	contextName := "ts-project"
 
 	before := time.Now().UTC().Truncate(time.Second)
-	if err := s.WriteContextMeta(uuid, "My Project", "/home/user/proj"); err != nil {
+	if err := s.WriteContextMeta(contextName, "/home/user/proj"); err != nil {
 		t.Fatalf("WriteContextMeta: %v", err)
 	}
 	after := time.Now().UTC().Truncate(time.Second)
 
 	// Read raw YAML to verify the field is present.
-	data, err := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
+	data, err := os.ReadFile(filepath.Join(s.ContextDir(contextName), "meta.yaml"))
 	if err != nil {
 		t.Fatalf("reading meta.yaml: %v", err)
 	}
@@ -378,13 +372,13 @@ func TestWriteContextMeta_createdAt(t *testing.T) {
 func TestWriteContextMeta_createdAtPreserved(t *testing.T) {
 	// Re-writing meta (e.g. to add a new host's path) must not reset created_at.
 	s := newTestStore(t)
-	uuid := "ctx-preserve-ts"
+	contextName := "preserve-ts"
 
-	if err := s.WriteContextMeta(uuid, "My Project", "/home/user/proj"); err != nil {
+	if err := s.WriteContextMeta(contextName, "/home/user/proj"); err != nil {
 		t.Fatalf("first write: %v", err)
 	}
 
-	data, _ := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
+	data, _ := os.ReadFile(filepath.Join(s.ContextDir(contextName), "meta.yaml"))
 	var first struct {
 		CreatedAt time.Time `yaml:"created_at"`
 	}
@@ -393,11 +387,11 @@ func TestWriteContextMeta_createdAtPreserved(t *testing.T) {
 	// Small sleep to ensure time advances.
 	time.Sleep(10 * time.Millisecond)
 
-	if err := s.WriteContextMeta(uuid, "My Project", "/home/other/proj"); err != nil {
+	if err := s.WriteContextMeta(contextName, "/home/other/proj"); err != nil {
 		t.Fatalf("second write: %v", err)
 	}
 
-	data, _ = os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
+	data, _ = os.ReadFile(filepath.Join(s.ContextDir(contextName), "meta.yaml"))
 	var second struct {
 		CreatedAt time.Time `yaml:"created_at"`
 	}
@@ -405,6 +399,39 @@ func TestWriteContextMeta_createdAtPreserved(t *testing.T) {
 
 	if !second.CreatedAt.Equal(first.CreatedAt) {
 		t.Errorf("created_at changed on second write: was %v, now %v", first.CreatedAt, second.CreatedAt)
+	}
+}
+
+func TestListContextNames(t *testing.T) {
+	s := newTestStore(t)
+
+	for _, name := range []string{"alpha", "beta", "my-project"} {
+		if err := s.WriteContextMeta(name, "/tmp/"+name); err != nil {
+			t.Fatalf("WriteContextMeta %q: %v", name, err)
+		}
+	}
+
+	names, err := s.ListContextNames()
+	if err != nil {
+		t.Fatalf("ListContextNames: %v", err)
+	}
+	if len(names) != 3 {
+		t.Errorf("len = %d, want 3", len(names))
+	}
+}
+
+func TestContextExists(t *testing.T) {
+	s := newTestStore(t)
+
+	if s.ContextExists("missing") {
+		t.Error("ContextExists returned true for missing context")
+	}
+
+	if err := s.WriteContextMeta("present", "/tmp/present"); err != nil {
+		t.Fatalf("WriteContextMeta: %v", err)
+	}
+	if !s.ContextExists("present") {
+		t.Error("ContextExists returned false for existing context")
 	}
 }
 

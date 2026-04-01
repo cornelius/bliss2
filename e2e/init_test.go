@@ -94,3 +94,80 @@ func TestInit_contextsCommandRemoved(t *testing.T) {
 		t.Errorf("expected error for removed 'contexts' command, got: %s", out)
 	}
 }
+
+func TestInit_defaultsToDirectoryName(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "my-service")
+	os.MkdirAll(proj, 0755)
+
+	out, err := bliss(t, proj, env, "init")
+	if err != nil {
+		t.Fatalf("init: %v\n%s", err, out)
+	}
+	// Slug derived from directory name "my-service"
+	if !strings.Contains(out, "my-service") {
+		t.Errorf("output %q missing slug derived from directory name", out)
+	}
+
+	// .bliss-context must contain the slug, not a UUID
+	data, err := os.ReadFile(filepath.Join(proj, ".bliss-context"))
+	if err != nil {
+		t.Fatalf("reading .bliss-context: %v", err)
+	}
+	slug := strings.TrimSpace(string(data))
+	if slug != "my-service" {
+		t.Errorf(".bliss-context = %q, want %q", slug, "my-service")
+	}
+}
+
+func TestInit_slugifiesName(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "proj")
+	os.MkdirAll(proj, 0755)
+
+	out, err := bliss(t, proj, env, "init", "--name", "My Project")
+	if err != nil {
+		t.Fatalf("init: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "my-project") {
+		t.Errorf("output %q missing slugified name 'my-project'", out)
+	}
+
+	data, err := os.ReadFile(filepath.Join(proj, ".bliss-context"))
+	if err != nil {
+		t.Fatalf("reading .bliss-context: %v", err)
+	}
+	slug := strings.TrimSpace(string(data))
+	if slug != "my-project" {
+		t.Errorf(".bliss-context = %q, want %q", slug, "my-project")
+	}
+}
+
+func TestInit_linksExistingContext(t *testing.T) {
+	home, env := blissEnv(t)
+
+	// First machine: initialize context
+	proj1 := filepath.Join(home, "proj1")
+	os.MkdirAll(proj1, 0755)
+	if _, err := bliss(t, proj1, env, "init", "--name", "shared"); err != nil {
+		t.Fatalf("first init: %v", err)
+	}
+
+	// Second directory with same slug: should offer to link
+	proj2 := filepath.Join(home, "proj2")
+	os.MkdirAll(proj2, 0755)
+	out, err := blissStdin(t, proj2, env, "y\n", "init", "--name", "shared")
+	if err != nil {
+		t.Fatalf("second init (link): %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Linked") {
+		t.Errorf("output %q missing 'Linked' confirmation", out)
+	}
+
+	// Both directories must point to the same context slug
+	data1, _ := os.ReadFile(filepath.Join(proj1, ".bliss-context"))
+	data2, _ := os.ReadFile(filepath.Join(proj2, ".bliss-context"))
+	if strings.TrimSpace(string(data1)) != strings.TrimSpace(string(data2)) {
+		t.Errorf(".bliss-context mismatch: proj1=%q proj2=%q", strings.TrimSpace(string(data1)), strings.TrimSpace(string(data2)))
+	}
+}

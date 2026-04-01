@@ -268,3 +268,45 @@ func TestList_all_contextHeaders(t *testing.T) {
 		}
 	}
 }
+
+func TestList_contextFlagFromOutsideProject(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "myservice")
+	os.MkdirAll(proj, 0755)
+
+	bliss(t, proj, env, "init")
+	bliss(t, proj, env, "add", "Service task")
+
+	// List from an unrelated directory using --context flag
+	outside := t.TempDir()
+	out, err := bliss(t, outside, env, "list", "--context", "myservice")
+	if err != nil {
+		t.Fatalf("list --context: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Service task") {
+		t.Errorf("list --context output %q missing todo", out)
+	}
+	if !strings.Contains(out, "myservice") {
+		t.Errorf("list --context output %q missing context name in header", out)
+	}
+}
+
+func TestList_unknownContextOffersSync(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	// Write a .bliss-context referencing a non-existent context slug
+	if err := os.WriteFile(filepath.Join(dir, ".bliss-context"), []byte("ghost-project\n"), 0644); err != nil {
+		t.Fatalf("writing .bliss-context: %v", err)
+	}
+
+	// Decline sync offer — should error
+	out, err := blissStdin(t, dir, env, "n\n", "list")
+	if err == nil {
+		t.Fatalf("expected error for unknown context, got: %s", out)
+	}
+	if !strings.Contains(out, "ghost-project") {
+		t.Errorf("error output %q should mention the missing context name", out)
+	}
+}
+

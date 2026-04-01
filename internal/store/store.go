@@ -122,19 +122,19 @@ func initGitRepo(path string) (*git.Repository, error) {
 
 func (s *Store) Path() string { return s.path }
 
-func (s *Store) ContextDir(uuid string) string {
-	return filepath.Join(s.path, "contexts", uuid)
+func (s *Store) ContextDir(contextName string) string {
+	return filepath.Join(s.path, "contexts", contextName)
 }
 
-func (s *Store) TodosDir(uuid string) string {
-	if uuid == "" {
+func (s *Store) TodosDir(contextName string) string {
+	if contextName == "" {
 		return filepath.Join(s.path, "todos")
 	}
-	return filepath.Join(s.path, "contexts", uuid, "todos")
+	return filepath.Join(s.path, "contexts", contextName, "todos")
 }
 
-func (s *Store) ContextListsDir(uuid string) string {
-	return filepath.Join(s.path, "contexts", uuid, "lists")
+func (s *Store) ContextListsDir(contextName string) string {
+	return filepath.Join(s.path, "contexts", contextName, "lists")
 }
 
 func (s *Store) PersonalListsDir() string {
@@ -142,26 +142,27 @@ func (s *Store) PersonalListsDir() string {
 }
 
 type contextMeta struct {
-	Name      string            `yaml:"name"`
 	CreatedAt time.Time         `yaml:"created_at,omitempty"`
 	Paths     map[string]string `yaml:"paths,omitempty"`
 }
 
-func (s *Store) ReadContextMeta(uuid string) (name, path string, err error) {
-	data, err := os.ReadFile(filepath.Join(s.ContextDir(uuid), "meta.yaml"))
+// ReadContextMeta returns the local path for the current machine for the given
+// context name. The path is empty if this machine has never linked the context.
+func (s *Store) ReadContextMeta(contextName string) (path string, err error) {
+	data, err := os.ReadFile(filepath.Join(s.ContextDir(contextName), "meta.yaml"))
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	var m contextMeta
 	if err := yaml.Unmarshal(data, &m); err != nil {
-		return "", "", fmt.Errorf("parsing meta.yaml: %w", err)
+		return "", fmt.Errorf("parsing meta.yaml: %w", err)
 	}
 	host, _ := os.Hostname()
-	return m.Name, m.Paths[host], nil
+	return m.Paths[host], nil
 }
 
-// ListContextUUIDs returns the UUIDs of all contexts in the store.
-func (s *Store) ListContextUUIDs() ([]string, error) {
+// ListContextNames returns the names (slugs) of all contexts in the store.
+func (s *Store) ListContextNames() ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(s.path, "contexts"))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -169,17 +170,25 @@ func (s *Store) ListContextUUIDs() ([]string, error) {
 		}
 		return nil, fmt.Errorf("reading contexts dir: %w", err)
 	}
-	var uuids []string
+	var names []string
 	for _, e := range entries {
 		if e.IsDir() {
-			uuids = append(uuids, e.Name())
+			names = append(names, e.Name())
 		}
 	}
-	return uuids, nil
+	return names, nil
 }
 
-func (s *Store) WriteContextMeta(uuid, name, path string) error {
-	dir := s.ContextDir(uuid)
+// ContextExists reports whether a context directory exists in the store.
+func (s *Store) ContextExists(contextName string) bool {
+	_, err := os.Stat(s.ContextDir(contextName))
+	return err == nil
+}
+
+// WriteContextMeta writes or updates meta.yaml for the given context name.
+// It preserves other machines' path entries and the original created_at timestamp.
+func (s *Store) WriteContextMeta(contextName, path string) error {
+	dir := s.ContextDir(contextName)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("creating context dir: %w", err)
 	}
@@ -192,12 +201,11 @@ func (s *Store) WriteContextMeta(uuid, name, path string) error {
 
 	metaPath := filepath.Join(dir, "meta.yaml")
 
-	// Read existing meta to preserve other hosts' paths.
+	// Read existing meta to preserve other hosts' paths and created_at.
 	var m contextMeta
 	if data, err := os.ReadFile(metaPath); err == nil {
 		yaml.Unmarshal(data, &m)
 	}
-	m.Name = name
 	if m.CreatedAt.IsZero() {
 		m.CreatedAt = time.Now().UTC()
 	}
@@ -214,8 +222,8 @@ func (s *Store) WriteContextMeta(uuid, name, path string) error {
 	return os.WriteFile(metaPath, data, 0644)
 }
 
-func (s *Store) WriteTodo(contextUUID string, t todo.Todo) error {
-	todosDir := s.TodosDir(contextUUID)
+func (s *Store) WriteTodo(contextName string, t todo.Todo) error {
+	todosDir := s.TodosDir(contextName)
 	if err := os.MkdirAll(todosDir, 0755); err != nil {
 		return fmt.Errorf("creating todos dir: %w", err)
 	}
@@ -231,12 +239,12 @@ func (s *Store) FindTodo(todoUUID string) (todo.Todo, error) {
 		return t, nil
 	}
 
-	uuids, err := s.ListContextUUIDs()
+	names, err := s.ListContextNames()
 	if err != nil {
 		return todo.Todo{}, err
 	}
-	for _, contextUUID := range uuids {
-		t, err := s.ReadTodo(contextUUID, todoUUID)
+	for _, contextName := range names {
+		t, err := s.ReadTodo(contextName, todoUUID)
 		if err == nil {
 			return t, nil
 		}
@@ -244,8 +252,8 @@ func (s *Store) FindTodo(todoUUID string) (todo.Todo, error) {
 	return todo.Todo{}, fmt.Errorf("todo %s not found", todoUUID)
 }
 
-func (s *Store) ReadTodo(contextUUID, todoUUID string) (todo.Todo, error) {
-	filePath := filepath.Join(s.TodosDir(contextUUID), todoUUID+".md")
+func (s *Store) ReadTodo(contextName, todoUUID string) (todo.Todo, error) {
+	filePath := filepath.Join(s.TodosDir(contextName), todoUUID+".md")
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return todo.Todo{}, fmt.Errorf("reading todo %s: %w", todoUUID, err)
@@ -258,8 +266,8 @@ func (s *Store) ReadTodo(contextUUID, todoUUID string) (todo.Todo, error) {
 	return t, nil
 }
 
-func (s *Store) DeleteTodo(contextUUID, todoUUID string) error {
-	filePath := filepath.Join(s.TodosDir(contextUUID), todoUUID+".md")
+func (s *Store) DeleteTodo(contextName, todoUUID string) error {
+	filePath := filepath.Join(s.TodosDir(contextName), todoUUID+".md")
 	if err := os.Remove(filePath); err != nil {
 		return fmt.Errorf("deleting todo %s: %w", todoUUID, err)
 	}
@@ -267,8 +275,8 @@ func (s *Store) DeleteTodo(contextUUID, todoUUID string) error {
 }
 
 // ListTodos returns todos sorted by creation time (oldest first), derived from git history.
-func (s *Store) ListTodos(contextUUID string) ([]todo.Todo, error) {
-	todosDir := s.TodosDir(contextUUID)
+func (s *Store) ListTodos(contextName string) ([]todo.Todo, error) {
+	todosDir := s.TodosDir(contextName)
 	entries, err := os.ReadDir(todosDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -277,19 +285,19 @@ func (s *Store) ListTodos(contextUUID string) ([]todo.Todo, error) {
 		return nil, fmt.Errorf("reading todos dir: %w", err)
 	}
 
-	creationTimes := s.getCreationTimes(contextUUID)
+	creationTimes := s.getCreationTimes(contextName)
 
 	var todos []todo.Todo
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		uuid := strings.TrimSuffix(entry.Name(), ".md")
-		t, err := s.ReadTodo(contextUUID, uuid)
+		todoUUID := strings.TrimSuffix(entry.Name(), ".md")
+		t, err := s.ReadTodo(contextName, todoUUID)
 		if err != nil {
 			continue
 		}
-		if ct, ok := creationTimes[uuid]; ok {
+		if ct, ok := creationTimes[todoUUID]; ok {
 			t.CreatedAt = ct
 		} else {
 			info, err := entry.Info()
@@ -308,7 +316,7 @@ func (s *Store) ListTodos(contextUUID string) ([]todo.Todo, error) {
 }
 
 // getCreationTimes walks git history to find the earliest commit touching each todo file.
-func (s *Store) getCreationTimes(contextUUID string) map[string]time.Time {
+func (s *Store) getCreationTimes(contextName string) map[string]time.Time {
 	result := make(map[string]time.Time)
 
 	iter, err := s.repo.Log(&git.LogOptions{Order: git.LogOrderCommitterTime})
@@ -318,10 +326,10 @@ func (s *Store) getCreationTimes(contextUUID string) map[string]time.Time {
 	defer iter.Close()
 
 	var prefix string
-	if contextUUID == "" {
+	if contextName == "" {
 		prefix = "todos" + string(filepath.Separator)
 	} else {
-		prefix = filepath.Join("contexts", contextUUID, "todos") + string(filepath.Separator)
+		prefix = filepath.Join("contexts", contextName, "todos") + string(filepath.Separator)
 	}
 
 	iter.ForEach(func(c *object.Commit) error {
@@ -331,9 +339,9 @@ func (s *Store) getCreationTimes(contextUUID string) map[string]time.Time {
 		}
 		files.ForEach(func(f *object.File) error {
 			if strings.HasPrefix(f.Name, prefix) {
-				uuid := strings.TrimSuffix(filepath.Base(f.Name), ".md")
+				todoUUID := strings.TrimSuffix(filepath.Base(f.Name), ".md")
 				// Iterating newest-first; keep overwriting to end up with the oldest commit.
-				result[uuid] = c.Author.When
+				result[todoUUID] = c.Author.When
 			}
 			return nil
 		})
@@ -343,13 +351,13 @@ func (s *Store) getCreationTimes(contextUUID string) map[string]time.Time {
 	return result
 }
 
-// WriteList writes to the context lists dir, or personal lists dir when contextUUID is empty.
-func (s *Store) WriteList(contextUUID, listName string, l list.List) error {
+// WriteList writes to the context lists dir, or personal lists dir when contextName is empty.
+func (s *Store) WriteList(contextName, listName string, l list.List) error {
 	var listsDir string
-	if contextUUID == "" {
+	if contextName == "" {
 		listsDir = s.PersonalListsDir()
 	} else {
-		listsDir = s.ContextListsDir(contextUUID)
+		listsDir = s.ContextListsDir(contextName)
 	}
 	if err := os.MkdirAll(listsDir, 0755); err != nil {
 		return fmt.Errorf("creating lists dir: %w", err)
@@ -358,14 +366,14 @@ func (s *Store) WriteList(contextUUID, listName string, l list.List) error {
 	return os.WriteFile(filePath, []byte(list.Format(l)), 0644)
 }
 
-// ReadList reads from the context lists dir, or personal lists dir when contextUUID is empty.
+// ReadList reads from the context lists dir, or personal lists dir when contextName is empty.
 // Returns an empty list if the file does not exist.
-func (s *Store) ReadList(contextUUID, listName string) (list.List, error) {
+func (s *Store) ReadList(contextName, listName string) (list.List, error) {
 	var listsDir string
-	if contextUUID == "" {
+	if contextName == "" {
 		listsDir = s.PersonalListsDir()
 	} else {
-		listsDir = s.ContextListsDir(contextUUID)
+		listsDir = s.ContextListsDir(contextName)
 	}
 	filePath := filepath.Join(listsDir, listName+".txt")
 	data, err := os.ReadFile(filePath)
@@ -378,11 +386,11 @@ func (s *Store) ReadList(contextUUID, listName string) (list.List, error) {
 	return list.Parse(string(data))
 }
 
-func (s *Store) ListNames(contextUUID string) ([]string, error) {
-	if contextUUID == "" {
+func (s *Store) ListNames(contextName string) ([]string, error) {
+	if contextName == "" {
 		return listNamesInDir(s.PersonalListsDir())
 	}
-	return listNamesInDir(s.ContextListsDir(contextUUID))
+	return listNamesInDir(s.ContextListsDir(contextName))
 }
 
 func (s *Store) PersonalListNames() ([]string, error) {
@@ -449,23 +457,23 @@ func (s *Store) ReadSession() (map[int]string, error) {
 	return mapping, nil
 }
 
-// RemoveFromList operates on the personal lists dir when contextUUID is empty.
-func (s *Store) RemoveFromList(contextUUID, listName, uuid string) error {
-	l, err := s.ReadList(contextUUID, listName)
+// RemoveFromList operates on the personal lists dir when contextName is empty.
+func (s *Store) RemoveFromList(contextName, listName, uuid string) error {
+	l, err := s.ReadList(contextName, listName)
 	if err != nil {
 		return err
 	}
 	list.Remove(&l, uuid)
-	return s.WriteList(contextUUID, listName, l)
+	return s.WriteList(contextName, listName, l)
 }
 
-func (s *Store) RemoveFromAllLists(contextUUID, uuid string) error {
-	names, err := s.ListNames(contextUUID)
+func (s *Store) RemoveFromAllLists(contextName, uuid string) error {
+	names, err := s.ListNames(contextName)
 	if err != nil {
 		return err
 	}
 	for _, name := range names {
-		if err := s.RemoveFromList(contextUUID, name, uuid); err != nil {
+		if err := s.RemoveFromList(contextName, name, uuid); err != nil {
 			return err
 		}
 	}
@@ -504,13 +512,13 @@ func (s *Store) Commit(message string) error {
 }
 
 // HistoryEntry is one entry from the git log.
-// ContextUUID identifies which context the commit belongs to, derived from the
-// store paths it touched: contexts/<uuid>/… → that context, todos/… → personal
-// (ContextUUID == "" and Personal == true), anything else → neither.
+// ContextName identifies which context the commit belongs to, derived from the
+// store paths it touched: contexts/<name>/… → that context, todos/… → personal
+// (ContextName == "" and Personal == true), anything else → neither.
 type HistoryEntry struct {
 	Time        time.Time
 	Message     string
-	ContextUUID string // non-empty when commit touches a specific context
+	ContextName string // non-empty when commit touches a specific context
 	Personal    bool   // true when commit touches personal todos/lists
 }
 
@@ -544,7 +552,7 @@ func (s *Store) ReadHistory() ([]HistoryEntry, error) {
 			if strings.HasPrefix(stat.Name, contextsPrefix) {
 				rest := stat.Name[len(contextsPrefix):]
 				if idx := strings.Index(rest, string(filepath.Separator)); idx > 0 {
-					entry.ContextUUID = rest[:idx]
+					entry.ContextName = rest[:idx]
 					break
 				}
 			} else if strings.HasPrefix(stat.Name, personalTodosPrefix) {

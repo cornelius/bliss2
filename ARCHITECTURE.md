@@ -47,6 +47,38 @@ The `store` package is the single owner of:
 
 No other package constructs paths into the store or reads/writes store files directly.
 
+## Context Identity: Slugs
+
+Contexts are identified by a **slug** — a lowercase, hyphen-separated string derived from the context name at `bliss init` time (e.g. `"My Project"` → `my-project`). The slug is:
+
+- Stored in the `.bliss-context` marker file in the project directory.
+- Used as the context's directory name in the store: `~/.bliss2/contexts/<slug>/`.
+- The stable, human-readable identity for the context — no UUID is used.
+
+`meta.yaml` inside each context directory stores:
+
+```yaml
+created_at: 2026-01-15T10:30:00Z
+paths:
+  thinkpad: /home/cs/git/my-project
+  macbook: /Users/cs/projects/my-project
+```
+
+The `paths` map records the local filesystem path for each machine (keyed by hostname). This is the **cross-machine context linking** mechanism.
+
+### Cross-machine linking
+
+The same context can exist on multiple machines. To link a second machine:
+
+1. Run `bliss sync` to pull the store (which includes the context directory).
+2. Run `bliss init --name "My Project"` (or just `bliss init` if the directory name matches) in the project directory on the new machine.
+3. Because `~/.bliss2/contexts/my-project/` already exists (pulled via sync), `bliss init` detects the collision and offers to **link** rather than create. Confirming adds the current machine's path to `meta.yaml` under `paths` and writes `.bliss-context`.
+
+This design means:
+- Each machine knows its own local path to the project.
+- Context data (todos, lists) is shared via git sync.
+- Renaming or moving the project directory on one machine does not affect other machines — each manages its own `paths` entry.
+
 ## Error Handling
 
 - Explicit error returns throughout, no panics except for truly unrecoverable states.

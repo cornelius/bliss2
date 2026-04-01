@@ -3,6 +3,7 @@ package main
 import (
 	blisscontext "bliss/internal/context"
 	"bliss/internal/list"
+	"bliss/internal/slug"
 	"bliss/internal/store"
 	"bliss/internal/todo"
 	"bliss/internal/ui"
@@ -107,17 +108,15 @@ func initCmd() *cobra.Command {
 			}
 
 			// Check for parent context
-			if parentUUID, parentDir, err := blisscontext.FindContext(filepath.Dir(cwd)); err == nil {
-				fmt.Printf("Note: parent context found in %s (UUID: %s)\n", parentDir, parentUUID)
+			if parentName, parentDir, err := blisscontext.FindContext(filepath.Dir(cwd)); err == nil {
+				fmt.Printf("Note: parent context found in %s (%s)\n", parentDir, parentName)
 			}
 
-			// Generate UUID for new context
-			contextUUID := uuid.New().String()
-
-			// Derive name from cwd if not provided
+			// Derive name from cwd if not provided, then slugify
 			if name == "" {
 				name = filepath.Base(cwd)
 			}
+			contextName := slug.Slugify(name)
 
 			// Initialize store
 			s, err := store.Init()
@@ -125,23 +124,49 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("initializing store: %w", err)
 			}
 
+			// If the context already exists, link this directory to it (cross-machine story).
+			if s.ContextExists(contextName) {
+				fmt.Printf("Context '%s' already exists. Link this directory to it? [Y/n] ", contextName)
+				var answer string
+				fmt.Scanln(&answer)
+				answer = strings.ToLower(strings.TrimSpace(answer))
+				if answer != "" && answer != "y" && answer != "yes" {
+					return fmt.Errorf("aborted")
+				}
+
+				if err := s.WriteContextMeta(contextName, cwd); err != nil {
+					return fmt.Errorf("linking context: %w", err)
+				}
+				if err := blisscontext.WriteContextFile(cwd, contextName); err != nil {
+					return fmt.Errorf("writing .bliss-context: %w", err)
+				}
+				if err := s.Commit(fmt.Sprintf("link context %s to %s", contextName, cwd)); err != nil {
+					return fmt.Errorf("committing: %w", err)
+				}
+				short := shortenHomePath(cwd)
+				fmt.Println(stMuted.Render("Linked to existing context") + "  " +
+					stMuted.Render("Context:") + " " + stBold.Render(contextName) +
+					"  " + stMuted.Render("Path:") + " " + stPath.Render(short))
+				return nil
+			}
+
 			// Write context metadata
-			if err := s.WriteContextMeta(contextUUID, name, cwd); err != nil {
+			if err := s.WriteContextMeta(contextName, cwd); err != nil {
 				return fmt.Errorf("writing context meta: %w", err)
 			}
 
 			// Write .bliss-context marker
-			if err := blisscontext.WriteContextFile(cwd, contextUUID); err != nil {
+			if err := blisscontext.WriteContextFile(cwd, contextName); err != nil {
 				return fmt.Errorf("writing .bliss-context: %w", err)
 			}
 
-			if err := s.Commit(fmt.Sprintf("init context %s (%s)", name, contextUUID)); err != nil {
+			if err := s.Commit(fmt.Sprintf("init context %s", contextName)); err != nil {
 				return fmt.Errorf("committing: %w", err)
 			}
 
 			short := shortenHomePath(cwd)
 			fmt.Println(stMuted.Render("Initialized") + "  " +
-				stMuted.Render("Context:") + " " + stBold.Render(name) +
+				stMuted.Render("Context:") + " " + stBold.Render(contextName) +
 				"  " + stMuted.Render("Path:") + " " + stPath.Render(short))
 			return nil
 		},
@@ -151,10 +176,47 @@ func initCmd() *cobra.Command {
 	return cmd
 }
 
-// addCmd implements `bliss add <title> [--list <name>] [--urgent]`
+// resolveContextName determines the active context name for a command.
+// Priority: explicit --context flag > .bliss-context in CWD tree > personal ("").
+// If a context name is found but the context does not exist in the store, the
+// user is offered to sync first; if it still does not exist, an error is returned.
+func resolveContextName(s *store.Store, flagValue, cwd string) (string, error) {
+	var contextName string
+	if flagValue != "" {
+		contextName = flagValue
+	} else {
+		name, _, err := blisscontext.FindContext(cwd)
+		if err != nil {
+			// No .bliss-context found — personal mode.
+			return "", nil
+		}
+		contextName = name
+	}
+
+	if !s.ContextExists(contextName) {
+		fmt.Printf("Context '%s' not found locally.\n", contextName)
+		fmt.Printf("Run 'bliss sync' to fetch it from remote? [Y/n] ")
+		var answer string
+		fmt.Scanln(&answer)
+		answer = strings.ToLower(strings.TrimSpace(answer))
+		if answer == "" || answer == "y" || answer == "yes" {
+			if _, _, err := s.Sync(); err != nil {
+				fmt.Fprintf(os.Stderr, "sync failed: %v\n", err)
+			}
+		}
+		if !s.ContextExists(contextName) {
+			return "", fmt.Errorf("context '%s' not found. Has it been initialized on another machine with 'bliss init'?", contextName)
+		}
+	}
+
+	return contextName, nil
+}
+
+// addCmd implements `bliss add <title> [--list <name>] [--urgent] [--context <name>]`
 func addCmd() *cobra.Command {
 	var listName string
 	var urgent bool
+	var contextFlag string
 
 	cmd := &cobra.Command{
 		Use:   "add [title]",
@@ -191,11 +253,14 @@ func addCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, _ := blisscontext.FindContext(cwd)
-
 			s, err := store.Open()
 			if err != nil {
 				return fmt.Errorf("opening store: %w", err)
+			}
+
+			contextName, err := resolveContextName(s, contextFlag, cwd)
+			if err != nil {
+				return err
 			}
 
 			t := todo.Todo{
@@ -203,17 +268,17 @@ func addCmd() *cobra.Command {
 				Title: title,
 			}
 
-			if err := s.WriteTodo(contextUUID, t); err != nil {
+			if err := s.WriteTodo(contextName, t); err != nil {
 				return fmt.Errorf("writing todo: %w", err)
 			}
 
 			if listName != "" {
-				l, err := s.ReadList(contextUUID, listName)
+				l, err := s.ReadList(contextName, listName)
 				if err != nil {
 					return fmt.Errorf("reading list: %w", err)
 				}
 				list.Add(&l, t.UUID, urgent)
-				if err := s.WriteList(contextUUID, listName, l); err != nil {
+				if err := s.WriteList(contextName, listName, l); err != nil {
 					return fmt.Errorf("writing list: %w", err)
 				}
 			}
@@ -234,6 +299,7 @@ func addCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&listName, "list", "l", "", "Add to a named list")
 	cmd.Flags().BoolVar(&urgent, "urgent", false, "Prepend to list (requires --list)")
+	cmd.Flags().StringVarP(&contextFlag, "context", "c", "", "Use a specific context by name")
 	return cmd
 }
 
@@ -242,7 +308,9 @@ func addCmd() *cobra.Command {
 // Focus mode: same scoping as bliss list, but inbox is omitted unless non-empty.
 // Future: will hide deferred todos and apply scene filtering.
 func showCmd() *cobra.Command {
-	return &cobra.Command{
+	var contextFlag string
+
+	cmd := &cobra.Command{
 		Use:   "show [list-name]",
 		Short: "Show actionable todos (focus mode)",
 		Args:  cobra.MaximumNArgs(1),
@@ -252,12 +320,16 @@ func showCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, _ := blisscontext.FindContext(cwd)
-
 			s, err := store.Open()
 			if err != nil {
 				return fmt.Errorf("opening store: %w", err)
 			}
+
+			contextName, err := resolveContextName(s, contextFlag, cwd)
+			if err != nil {
+				return err
+			}
+			contextUUID := contextName
 
 			var filterList string
 			if len(args) > 0 {
@@ -364,11 +436,15 @@ func showCmd() *cobra.Command {
 			return s.WriteSession(session)
 		},
 	}
+
+	cmd.Flags().StringVarP(&contextFlag, "context", "c", "", "Use a specific context by name")
+	return cmd
 }
 
 func listCmd() *cobra.Command {
 	var all bool
 	var personal bool
+	var contextFlag string
 
 	cmd := &cobra.Command{
 		Use:   "list [list-name]",
@@ -379,8 +455,6 @@ func listCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
-
-			contextUUID, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
@@ -396,22 +470,26 @@ func listCmd() *cobra.Command {
 				filterList = args[0]
 			}
 
-			// listCtxUUID is "" for personal mode (--personal or no context).
-			listCtxUUID := contextUUID
-			if personal || contextUUID == "" {
-				listCtxUUID = ""
+			// Resolve context: --personal overrides everything to personal mode.
+			var listCtxName string
+			if !personal {
+				resolved, err := resolveContextName(s, contextFlag, cwd)
+				if err != nil {
+					return err
+				}
+				listCtxName = resolved
 			}
 
 			// ── header ───────────────────────────────────────────────────
 			fmt.Print(stTitle.Render("bliss list") + "  ")
-			if listCtxUUID == "" {
+			if listCtxName == "" {
 				fmt.Print(stMuted.Render("Personal"))
 				if filterList != "" {
 					fmt.Print("  " + stMuted.Render("List:") + " " + stBold.Render(filterList))
 				}
 			} else {
-				ctxName, ctxPath, _ := s.ReadContextMeta(listCtxUUID)
-				fmt.Print(stMuted.Render("Context:") + " " + stBold.Render(ctxName))
+				ctxPath, _ := s.ReadContextMeta(listCtxName)
+				fmt.Print(stMuted.Render("Context:") + " " + stBold.Render(listCtxName))
 				if filterList != "" {
 					fmt.Print("  " + stMuted.Render("List:") + " " + stBold.Render(filterList))
 				}
@@ -426,7 +504,7 @@ func listCmd() *cobra.Command {
 			first := true
 
 			resolve := func(uuid string) (todo.Todo, error) {
-				return s.ReadTodo(listCtxUUID, uuid)
+				return s.ReadTodo(listCtxName, uuid)
 			}
 
 			printOne := func(name string, l list.List, showName bool) {
@@ -453,7 +531,7 @@ func listCmd() *cobra.Command {
 				}
 			}
 
-			inboxTodos, err := getInboxTodos(s, listCtxUUID)
+			inboxTodos, err := getInboxTodos(s, listCtxName)
 			if err != nil {
 				return err
 			}
@@ -471,7 +549,7 @@ func listCmd() *cobra.Command {
 			}
 
 			if filterList != "" {
-				l, err := s.ReadList(listCtxUUID, filterList)
+				l, err := s.ReadList(listCtxName, filterList)
 				if err != nil {
 					return fmt.Errorf("reading list %q: %w", filterList, err)
 				}
@@ -480,12 +558,12 @@ func listCmd() *cobra.Command {
 			}
 
 			// No filter: all lists in semantic order, then inbox.
-			listNames, err := s.ListNames(listCtxUUID)
+			listNames, err := s.ListNames(listCtxName)
 			if err != nil {
 				return err
 			}
 			for _, name := range sortListNames(listNames) {
-				l, err := s.ReadList(listCtxUUID, name)
+				l, err := s.ReadList(listCtxName, name)
 				if err != nil {
 					continue
 				}
@@ -508,6 +586,7 @@ func listCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&all, "all", false, "Show todos from all contexts")
 	cmd.Flags().BoolVarP(&personal, "personal", "p", false, "Show personal lists")
+	cmd.Flags().StringVarP(&contextFlag, "context", "c", "", "Use a specific context by name")
 	return cmd
 }
 
@@ -517,21 +596,21 @@ func listAll(s *store.Store) error {
 	// Header
 	fmt.Println(stTitle.Render("bliss list --all"))
 
-	contextUUIDs, err := s.ListContextUUIDs()
+	contextNames, err := s.ListContextNames()
 	if err != nil {
 		return err
 	}
 
-	type ctxInfo struct{ uuid, name, path string }
+	type ctxInfo struct{ name, path string }
 	var ctxs []ctxInfo
-	for _, uuid := range contextUUIDs {
-		name, path, _ := s.ReadContextMeta(uuid)
-		ctxs = append(ctxs, ctxInfo{uuid, name, path})
+	for _, name := range contextNames {
+		path, _ := s.ReadContextMeta(name)
+		ctxs = append(ctxs, ctxInfo{name, path})
 	}
 	sort.Slice(ctxs, func(i, j int) bool { return ctxs[i].name < ctxs[j].name })
 
 	// printAllList prints one named list (no position numbers). Returns true if anything printed.
-	printAllList := func(ctxUUID, name string, l list.List, showName bool) bool {
+	printAllList := func(ctxName, name string, l list.List, showName bool) bool {
 		if len(list.AllUUIDs(l)) == 0 {
 			return false
 		}
@@ -543,7 +622,7 @@ func listAll(s *store.Store) error {
 				fmt.Println(listSectionDelim(1, section.Name))
 			}
 			for _, id := range section.Items {
-				t, err := s.ReadTodo(ctxUUID, id)
+				t, err := s.ReadTodo(ctxName, id)
 				if err != nil {
 					continue
 				}
@@ -554,7 +633,7 @@ func listAll(s *store.Store) error {
 	}
 
 	for _, ctx := range ctxs {
-		todos, err := s.ListTodos(ctx.uuid)
+		todos, err := s.ListTodos(ctx.name)
 		if err != nil || len(todos) == 0 {
 			continue
 		}
@@ -565,21 +644,21 @@ func listAll(s *store.Store) error {
 		fmt.Println()
 
 		firstList := true
-		listNames, _ := s.ListNames(ctx.uuid)
+		listNames, _ := s.ListNames(ctx.name)
 		for _, name := range sortListNames(listNames) {
-			l, err := s.ReadList(ctx.uuid, name)
+			l, err := s.ReadList(ctx.name, name)
 			if err != nil {
 				continue
 			}
 			if !firstList {
 				fmt.Println()
 			}
-			if printAllList(ctx.uuid, name, l, true) {
+			if printAllList(ctx.name, name, l, true) {
 				firstList = false
 			}
 		}
 
-		inboxTodos, _ := getInboxTodos(s, ctx.uuid)
+		inboxTodos, _ := getInboxTodos(s, ctx.name)
 		if len(inboxTodos) > 0 {
 			if !firstList {
 				fmt.Println()
@@ -588,7 +667,7 @@ func listAll(s *store.Store) error {
 			for i, t := range inboxTodos {
 				uuids[i] = t.UUID
 			}
-			printAllList(ctx.uuid, "inbox", list.List{Sections: []list.Section{{Items: uuids}}}, true)
+			printAllList(ctx.name, "inbox", list.List{Sections: []list.Section{{Items: uuids}}}, true)
 		}
 	}
 
@@ -641,29 +720,29 @@ func doneCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, _ := blisscontext.FindContext(cwd)
+			contextName, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			todoUUID, err := resolveTodo(args[0], s, contextUUID)
+			todoUUID, err := resolveTodo(args[0], s, contextName)
 			if err != nil {
 				return err
 			}
 
 			// Read title for confirmation message
-			t, err := s.ReadTodo(contextUUID, todoUUID)
+			t, err := s.ReadTodo(contextName, todoUUID)
 			if err != nil {
 				return fmt.Errorf("reading todo: %w", err)
 			}
 
-			if err := s.DeleteTodo(contextUUID, todoUUID); err != nil {
+			if err := s.DeleteTodo(contextName, todoUUID); err != nil {
 				return fmt.Errorf("deleting todo: %w", err)
 			}
 
-			if err := s.RemoveFromAllLists(contextUUID, todoUUID); err != nil {
+			if err := s.RemoveFromAllLists(contextName, todoUUID); err != nil {
 				return fmt.Errorf("removing from lists: %w", err)
 			}
 
@@ -695,33 +774,33 @@ func moveCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, _ := blisscontext.FindContext(cwd)
+			contextName, _, _ := blisscontext.FindContext(cwd)
 
 			s, err := store.Open()
 			if err != nil {
 				return err
 			}
 
-			todoUUID, err := resolveTodo(args[0], s, contextUUID)
+			todoUUID, err := resolveTodo(args[0], s, contextName)
 			if err != nil {
 				return err
 			}
 
-			t, err := s.ReadTodo(contextUUID, todoUUID)
+			t, err := s.ReadTodo(contextName, todoUUID)
 			if err != nil {
 				return fmt.Errorf("reading todo: %w", err)
 			}
 
-			if err := s.RemoveFromAllLists(contextUUID, todoUUID); err != nil {
+			if err := s.RemoveFromAllLists(contextName, todoUUID); err != nil {
 				return fmt.Errorf("removing from lists: %w", err)
 			}
 
-			l, err := s.ReadList(contextUUID, listName)
+			l, err := s.ReadList(contextName, listName)
 			if err != nil {
 				return fmt.Errorf("reading list %q: %w", listName, err)
 			}
 			list.Add(&l, todoUUID, urgent)
-			if err := s.WriteList(contextUUID, listName, l); err != nil {
+			if err := s.WriteList(contextName, listName, l); err != nil {
 				return fmt.Errorf("writing list: %w", err)
 			}
 
@@ -752,6 +831,7 @@ func checkCmd() *cobra.Command {
 			}
 
 			contextUUID, _, _ := blisscontext.FindContext(cwd)
+			// Note: --context flag not yet supported for check; use CWD-based detection.
 
 			s, err := store.Open()
 			if err != nil {
@@ -790,7 +870,8 @@ func groomCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextUUID, _, _ := blisscontext.FindContext(cwd)
+			contextName, _, _ := blisscontext.FindContext(cwd)
+			// Note: --context flag not yet supported for groom; use CWD-based detection.
 
 			s, err := store.Open()
 			if err != nil {
@@ -802,7 +883,7 @@ func groomCmd() *cobra.Command {
 				startList = args[0]
 			}
 
-			m := ui.NewGroomModel(s, contextUUID, ui.DefaultKanbanOrder, startList)
+			m := ui.NewGroomModel(s, contextName, ui.DefaultKanbanOrder, startList)
 			p := tea.NewProgram(m)
 			if _, err := p.Run(); err != nil {
 				return fmt.Errorf("running groom UI: %w", err)
@@ -973,8 +1054,8 @@ func statusCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			activeUUID, _, _ := blisscontext.FindContext(cwd)
-			personalMode := activeUUID == ""
+			activeName, _, _ := blisscontext.FindContext(cwd)
+			personalMode := activeName == ""
 
 			s, err := store.Open()
 			if err != nil {
@@ -987,24 +1068,23 @@ func statusCmd() *cobra.Command {
 			fmt.Println()
 
 			// ── contexts ─────────────────────────────────────────────────
-			contextUUIDs, err := s.ListContextUUIDs()
+			contextNames, err := s.ListContextNames()
 			if err != nil {
 				return err
 			}
 			type ctxRow struct {
-				uuid   string
 				name   string
 				path   string
 				active bool
 			}
 			var rows []ctxRow
-			for _, uuid := range contextUUIDs {
-				name, path, _ := s.ReadContextMeta(uuid)
-				rows = append(rows, ctxRow{uuid, name, path, uuid == activeUUID})
+			for _, name := range contextNames {
+				path, _ := s.ReadContextMeta(name)
+				rows = append(rows, ctxRow{name, path, name == activeName})
 			}
 			sort.Slice(rows, func(i, j int) bool { return rows[i].name < rows[j].name })
 			for _, r := range rows {
-				counts := statusListCounts(s, r.uuid)
+				counts := statusListCounts(s, r.name)
 				if len(counts) == 0 {
 					continue
 				}
@@ -1078,13 +1158,13 @@ func statusInboxCount(s *store.Store, contextUUID string) int {
 	return len(todos)
 }
 
-// isContextPathFresh checks whether a path still contains a .bliss-context pointing to uuid.
-func isContextPathFresh(path, uuid string) bool {
+// isContextPathFresh checks whether a path still contains a .bliss-context pointing to contextName.
+func isContextPathFresh(path, contextName string) bool {
 	data, err := os.ReadFile(filepath.Join(path, ".bliss-context"))
 	if err != nil {
 		return false
 	}
-	return strings.TrimSpace(string(data)) == uuid
+	return strings.TrimSpace(string(data)) == contextName
 }
 
 func syncCmd() *cobra.Command {
@@ -1128,6 +1208,7 @@ func syncCmd() *cobra.Command {
 func historyCmd() *cobra.Command {
 	var all bool
 	var personal bool
+	var contextFlag string
 
 	cmd := &cobra.Command{
 		Use:   "history",
@@ -1143,18 +1224,25 @@ func historyCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
-			contextUUID, _, _ := blisscontext.FindContext(cwd)
+
+			var contextName string
+			if !personal && !all {
+				contextName, err = resolveContextName(s, contextFlag, cwd)
+				if err != nil {
+					return err
+				}
+			}
 
 			// ── header ────────────────────────────────────────────────────
 			date := stMuted.Render(time.Now().Format("Mon Jan 02, 2006"))
 			if all {
 				fmt.Println(stTitle.Render("bliss history --all") + "  " + date)
-			} else if personal || contextUUID == "" {
+			} else if personal || contextName == "" {
 				fmt.Println(stTitle.Render("bliss history") + "  " + stMuted.Render("Personal") + "  " + date)
 			} else {
-				ctxName, ctxPath, _ := s.ReadContextMeta(contextUUID)
+				ctxPath, _ := s.ReadContextMeta(contextName)
 				fmt.Println(stTitle.Render("bliss history") + "  " +
-					stMuted.Render("Context:") + " " + stBold.Render(ctxName) +
+					stMuted.Render("Context:") + " " + stBold.Render(contextName) +
 					"  " + stMuted.Render("Path:") + " " + stPath.Render(shortenHomePath(ctxPath)) +
 					"  " + date)
 			}
@@ -1172,12 +1260,12 @@ func historyCmd() *cobra.Command {
 				switch {
 				case all:
 					filtered = append(filtered, e)
-				case personal || contextUUID == "":
+				case personal || contextName == "":
 					if e.Personal {
 						filtered = append(filtered, e)
 					}
 				default:
-					if e.ContextUUID == contextUUID {
+					if e.ContextName == contextName {
 						filtered = append(filtered, e)
 					}
 				}
@@ -1188,15 +1276,11 @@ func historyCmd() *cobra.Command {
 				return nil
 			}
 
-			// For --all, build a context name lookup and compute label width.
-			var ctxNames map[string]string
+			// For --all, compute label width from context names (slugs).
 			labelWidth := 0
 			if all {
-				ctxNames = make(map[string]string)
-				contextUUIDs, _ := s.ListContextUUIDs()
-				for _, uuid := range contextUUIDs {
-					name, _, _ := s.ReadContextMeta(uuid)
-					ctxNames[uuid] = name
+				contextNames, _ := s.ListContextNames()
+				for _, name := range contextNames {
 					if len(name) > labelWidth {
 						labelWidth = len(name)
 					}
@@ -1211,8 +1295,8 @@ func historyCmd() *cobra.Command {
 				msg := strings.TrimPrefix(strings.TrimSpace(e.Message), "bliss: ")
 				if all {
 					var label string
-					if e.ContextUUID != "" {
-						label = ctxNames[e.ContextUUID]
+					if e.ContextName != "" {
+						label = e.ContextName
 					} else if e.Personal {
 						label = "personal"
 					}
@@ -1229,6 +1313,7 @@ func historyCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&all, "all", false, "Show history across all contexts and personal")
 	cmd.Flags().BoolVarP(&personal, "personal", "p", false, "Show personal history")
+	cmd.Flags().StringVarP(&contextFlag, "context", "c", "", "Show history for a specific context by name")
 	return cmd
 }
 

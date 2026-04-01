@@ -41,8 +41,9 @@ func TestStatus_insideContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("status inside context: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "My Project") {
-		t.Errorf("output %q missing context name", out)
+	// --name "My Project" is slugified to "my-project"
+	if !strings.Contains(out, "my-project") {
+		t.Errorf("output %q missing context name (slug)", out)
 	}
 	if !strings.Contains(out, "myproject") {
 		t.Errorf("output %q missing context path", out)

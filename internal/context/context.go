@@ -12,17 +12,17 @@ import (
 const markerFile = ".bliss-context"
 
 // FindContext walks up from startDir looking for a .bliss-context file.
-// Returns the UUID, the directory containing the marker, and any error.
-func FindContext(startDir string) (uuid string, contextDir string, err error) {
+// Returns the context name (slug), the directory containing the marker, and any error.
+func FindContext(startDir string) (name string, contextDir string, err error) {
 	dir := startDir
 	for {
 		markerPath := filepath.Join(dir, markerFile)
 		if _, statErr := os.Stat(markerPath); statErr == nil {
-			uuid, err = ReadContextFile(dir)
+			name, err = ReadContextFile(dir)
 			if err != nil {
 				return "", "", err
 			}
-			return uuid, dir, nil
+			return name, dir, nil
 		}
 
 		parent := filepath.Dir(dir)
@@ -34,22 +34,22 @@ func FindContext(startDir string) (uuid string, contextDir string, err error) {
 	}
 }
 
-// ReadContextFile reads the UUID from the .bliss-context file in the given directory.
+// ReadContextFile reads the context name (slug) from the .bliss-context file in the given directory.
 func ReadContextFile(dir string) (string, error) {
 	markerPath := filepath.Join(dir, markerFile)
 	data, err := os.ReadFile(markerPath)
 	if err != nil {
 		return "", fmt.Errorf("reading .bliss-context: %w", err)
 	}
-	uuid := strings.TrimSpace(string(data))
-	if uuid == "" {
+	name := strings.TrimSpace(string(data))
+	if name == "" {
 		return "", fmt.Errorf(".bliss-context is empty")
 	}
-	return uuid, nil
+	return name, nil
 }
 
-// WriteContextFile writes a UUID to the .bliss-context file in the given directory.
-func WriteContextFile(dir, uuid string) error {
+// WriteContextFile writes a context name (slug) to the .bliss-context file in the given directory.
+func WriteContextFile(dir, name string) error {
 	markerPath := filepath.Join(dir, markerFile)
-	return os.WriteFile(markerPath, []byte(uuid+"\n"), 0644)
+	return os.WriteFile(markerPath, []byte(name+"\n"), 0644)
 }
