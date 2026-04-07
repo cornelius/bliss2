@@ -239,6 +239,29 @@ func TestAdd_contextFlagAddsToNamedContext(t *testing.T) {
 	}
 }
 
+func TestAdd_contextFlagCreatesContextIfMissing(t *testing.T) {
+	_, env := blissEnv(t)
+	dir := t.TempDir()
+
+	// Use --context with a name that has never been initialized
+	out, err := bliss(t, dir, env, "add", "--context", "brand-new", "First task")
+	if err != nil {
+		t.Fatalf("add --context brand-new: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "First task") {
+		t.Errorf("add output %q missing title", out)
+	}
+
+	// The context should now exist and the todo should be listed
+	out, err = bliss(t, dir, env, "list", "--context", "brand-new")
+	if err != nil {
+		t.Fatalf("list --context brand-new: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "First task") {
+		t.Errorf("list output %q missing todo added to auto-created context", out)
+	}
+}
+
 func TestAdd_contextFlagOverridesCWD(t *testing.T) {
 	home, env := blissEnv(t)
 	proj1 := filepath.Join(home, "alpha")

@@ -180,9 +180,12 @@ func initCmd() *cobra.Command {
 // Priority: explicit --context flag > .bliss-context in CWD tree > personal ("").
 // If a context name is found but the context does not exist in the store, the
 // user is offered to sync first; if it still does not exist, an error is returned.
-func resolveContextName(s *store.Store, flagValue, cwd string) (string, error) {
+// When createIfMissing is true (used by add -c) and the context is still absent
+// after sync, the context is created implicitly instead of returning an error.
+func resolveContextName(s *store.Store, flagValue, cwd string, createIfMissing bool) (string, error) {
+	fromFlag := flagValue != ""
 	var contextName string
-	if flagValue != "" {
+	if fromFlag {
 		contextName = flagValue
 	} else {
 		name, _, err := blisscontext.FindContext(cwd)
@@ -194,17 +197,19 @@ func resolveContextName(s *store.Store, flagValue, cwd string) (string, error) {
 	}
 
 	if !s.ContextExists(contextName) {
-		fmt.Printf("Context '%s' not found locally.\n", contextName)
-		fmt.Printf("Run 'bliss sync' to fetch it from remote? [Y/n] ")
-		var answer string
-		fmt.Scanln(&answer)
-		answer = strings.ToLower(strings.TrimSpace(answer))
-		if answer == "" || answer == "y" || answer == "yes" {
-			if _, _, err := s.Sync(); err != nil {
-				fmt.Fprintf(os.Stderr, "sync failed: %v\n", err)
-			}
+		fmt.Printf("Context '%s' not found locally. Syncing to check remote...\n", contextName)
+		if _, _, err := s.Sync(); err != nil {
+			fmt.Fprintf(os.Stderr, "sync failed: %v\n", err)
 		}
+
 		if !s.ContextExists(contextName) {
+			if createIfMissing && fromFlag {
+				if err := s.WriteContextMeta(contextName, ""); err != nil {
+					return "", fmt.Errorf("creating context '%s': %w", contextName, err)
+				}
+				fmt.Printf("Created new context '%s'.\n", contextName)
+				return contextName, nil
+			}
 			return "", fmt.Errorf("context '%s' not found. Has it been initialized on another machine with 'bliss init'?", contextName)
 		}
 	}
@@ -258,7 +263,7 @@ func addCmd() *cobra.Command {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			contextName, err := resolveContextName(s, contextFlag, cwd)
+			contextName, err := resolveContextName(s, contextFlag, cwd, true)
 			if err != nil {
 				return err
 			}
@@ -325,7 +330,7 @@ func showCmd() *cobra.Command {
 				return fmt.Errorf("opening store: %w", err)
 			}
 
-			contextName, err := resolveContextName(s, contextFlag, cwd)
+			contextName, err := resolveContextName(s, contextFlag, cwd, false)
 			if err != nil {
 				return err
 			}
@@ -473,7 +478,7 @@ func listCmd() *cobra.Command {
 			// Resolve context: --personal overrides everything to personal mode.
 			var listCtxName string
 			if !personal {
-				resolved, err := resolveContextName(s, contextFlag, cwd)
+				resolved, err := resolveContextName(s, contextFlag, cwd, false)
 				if err != nil {
 					return err
 				}
@@ -1233,7 +1238,7 @@ func historyCmd() *cobra.Command {
 
 			var contextName string
 			if !personal && !all {
-				contextName, err = resolveContextName(s, contextFlag, cwd)
+				contextName, err = resolveContextName(s, contextFlag, cwd, false)
 				if err != nil {
 					return err
 				}
