@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -135,6 +136,34 @@ func TestMove_urgent(t *testing.T) {
 	}
 	if movedIdx >= firstIdx {
 		t.Errorf("urgently moved todo should appear before existing todos:\n%s", out)
+	}
+}
+
+func TestMove_contextFlag(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "svc")
+	os.MkdirAll(proj, 0755)
+
+	bliss(t, proj, env, "init")
+	bliss(t, proj, env, "add", "Contextual task")
+
+	// Move from outside the project directory using --context
+	outside := t.TempDir()
+	bliss(t, proj, env, "list") // populate session from inside proj
+	out, err := bliss(t, outside, env, "move", "--context", "svc", "1", "-l", "today")
+	if err != nil {
+		t.Fatalf("move --context: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Moved to") || !strings.Contains(out, "today") {
+		t.Errorf("move output %q missing confirmation", out)
+	}
+
+	out, err = bliss(t, proj, env, "list", "today")
+	if err != nil {
+		t.Fatalf("list today: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Contextual task") {
+		t.Errorf("list today output %q missing todo", out)
 	}
 }
 

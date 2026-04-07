@@ -764,6 +764,7 @@ func doneCmd() *cobra.Command {
 func moveCmd() *cobra.Command {
 	var listName string
 	var urgent bool
+	var contextFlag string
 
 	cmd := &cobra.Command{
 		Use:   "move <number|uuid> --list <name>",
@@ -779,9 +780,12 @@ func moveCmd() *cobra.Command {
 				return fmt.Errorf("getting current directory: %w", err)
 			}
 
-			contextName, _, _ := blisscontext.FindContext(cwd)
-
 			s, err := store.Open()
+			if err != nil {
+				return err
+			}
+
+			contextName, err := resolveContextName(s, contextFlag, cwd, false)
 			if err != nil {
 				return err
 			}
@@ -820,6 +824,7 @@ func moveCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&listName, "list", "l", "", "Target list")
 	cmd.Flags().BoolVar(&urgent, "urgent", false, "Place at top of list")
+	cmd.Flags().StringVarP(&contextFlag, "context", "c", "", "Use a specific context by name")
 	return cmd
 }
 
