@@ -12,9 +12,9 @@ Each command answers a different question:
 - `bliss init` — "Is this directory now a bliss context?"
 
 ## What must always appear
-- A muted action phrase that names what happened ("Added", "Done", "Moved to", "Initialized")
-- The todo title (add, done, move) or context name + path (init)
-- The target list name when relevant (add to list, move)
+- A muted action phrase that names what happened ("Added to", "Done", "Moved to", "Initialized")
+- The todo title (done, move) or context name + path (init)
+- The target `context/list` path (add) or list name (move)
 
 ## What must never appear
 - A `bliss <command>` header banner — workflow commands do not have overview headers
@@ -25,8 +25,8 @@ Each command answers a different question:
 
 | Command | Variant | Output |
 |---|---|---|
-| add | incoming (no list) | `Added: title` |
-| add | to named list | `Added to listname: title` |
+| add | incoming (no list) | `Added to context/incoming` (or `Added to incoming` in personal mode) |
+| add | to named list | `Added to context/listname` (or `Added to listname` in personal mode) |
 | done | — | `Done: title` |
 | move | — | `Moved to listname: title` |
 | init | — | `Initialized  Context: name  Path: ~/path` |
@@ -46,3 +46,13 @@ Each command answers a different question:
   The name and path are what the user needs to confirm.
 - **Single line only.** These are transactional confirmations. No multi-line
   layout, no section structure.
+- **`bliss add` does not echo the title.** The user just typed it (or piped it
+  in). Echoing is redundant. The confirmation communicates *where* the todo
+  landed, not *what* it says. `bliss list` is the place to see the title.
+- **`bliss add` always names the destination as `context/list`.** Even when no
+  `-l` flag is given, the output says `Added to <context>/incoming`. Incoming
+  is a virtual view in the data model (no stored list file), but for output
+  purposes it is treated as a pseudo-list name. This gives one uniform
+  phrasing across all four cases (context × list, context × incoming,
+  personal × list, personal × incoming) instead of two phrases with a
+  special case.

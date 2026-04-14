@@ -15,15 +15,11 @@ func TestAdd_titleWithApostrophe(t *testing.T) {
 		t.Fatalf("init: %v", err)
 	}
 
-	out, err := bliss(t, dir, env, "add", "Fix John's bug")
-	if err != nil {
+	if _, err := bliss(t, dir, env, "add", "Fix John's bug"); err != nil {
 		t.Fatalf("add: %v", err)
 	}
-	if !strings.Contains(out, "Fix John's bug") {
-		t.Errorf("output %q does not contain title", out)
-	}
 
-	out, err = bliss(t, dir, env, "list")
+	out, err := bliss(t, dir, env, "list")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -41,15 +37,11 @@ func TestAdd_titleWithDoubleQuotes(t *testing.T) {
 	}
 
 	title := `He said "hello"`
-	out, err := bliss(t, dir, env, "add", title)
-	if err != nil {
+	if _, err := bliss(t, dir, env, "add", title); err != nil {
 		t.Fatalf("add: %v", err)
 	}
-	if !strings.Contains(out, title) {
-		t.Errorf("output %q does not contain title", out)
-	}
 
-	out, err = bliss(t, dir, env, "list")
+	out, err := bliss(t, dir, env, "list")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -66,11 +58,14 @@ func TestAdd_toIncoming(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add: %v", err)
 	}
-	if !strings.Contains(out, "Added:") {
-		t.Errorf("output %q missing 'Added:' label", out)
+	if !strings.Contains(out, "Added to") {
+		t.Errorf("output %q missing 'Added to' phrase", out)
 	}
-	if !strings.Contains(out, "Incoming task") {
-		t.Errorf("output %q missing title", out)
+	if !strings.Contains(out, "incoming") {
+		t.Errorf("output %q missing incoming target", out)
+	}
+	if strings.Contains(out, "Incoming task") {
+		t.Errorf("output %q must not echo the todo title", out)
 	}
 	if strings.Contains(out, "[") {
 		t.Errorf("output %q must not contain brackets", out)
@@ -91,8 +86,8 @@ func TestAdd_toNamedList(t *testing.T) {
 	if !strings.Contains(out, "today") {
 		t.Errorf("output %q missing list name", out)
 	}
-	if !strings.Contains(out, "My task") {
-		t.Errorf("output %q missing title", out)
+	if strings.Contains(out, "My task") {
+		t.Errorf("output %q must not echo the todo title", out)
 	}
 	if strings.Contains(out, "[") {
 		t.Errorf("output %q must not contain brackets", out)
@@ -130,15 +125,11 @@ func TestAdd_stdinTitle(t *testing.T) {
 	}
 
 	title := "Fix John's bug"
-	out, err := blissStdin(t, dir, env, title+"\n", "add")
-	if err != nil {
+	if _, err := blissStdin(t, dir, env, title+"\n", "add"); err != nil {
 		t.Fatalf("add via stdin: %v", err)
 	}
-	if !strings.Contains(out, title) {
-		t.Errorf("output %q does not contain title", out)
-	}
 
-	out, err = bliss(t, dir, env, "list")
+	out, err := bliss(t, dir, env, "list")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -163,8 +154,8 @@ func TestAdd_stdinTitleWithList(t *testing.T) {
 	if !strings.Contains(out, "today") {
 		t.Errorf("output %q should mention target list", out)
 	}
-	if !strings.Contains(out, title) {
-		t.Errorf("output %q does not contain title", out)
+	if strings.Contains(out, title) {
+		t.Errorf("output %q must not echo the todo title", out)
 	}
 }
 
@@ -172,15 +163,11 @@ func TestAdd_personalMode(t *testing.T) {
 	_, env := blissEnv(t)
 	dir := t.TempDir() // no bliss init
 
-	out, err := bliss(t, dir, env, "add", "Buy oat milk")
-	if err != nil {
+	if out, err := bliss(t, dir, env, "add", "Buy oat milk"); err != nil {
 		t.Fatalf("add in personal mode: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "Buy oat milk") {
-		t.Errorf("add output %q missing title", out)
-	}
 
-	out, err = bliss(t, dir, env, "list")
+	out, err := bliss(t, dir, env, "list")
 	if err != nil {
 		t.Fatalf("list in personal mode: %v\n%s", err, out)
 	}
@@ -221,16 +208,12 @@ func TestAdd_contextFlagAddsToNamedContext(t *testing.T) {
 
 	// Add to context from an unrelated directory using --context flag
 	outside := t.TempDir()
-	out, err := bliss(t, outside, env, "add", "--context", "myservice", "Task from outside")
-	if err != nil {
+	if out, err := bliss(t, outside, env, "add", "--context", "myservice", "Task from outside"); err != nil {
 		t.Fatalf("add --context: %v\n%s", err, out)
-	}
-	if !strings.Contains(out, "Task from outside") {
-		t.Errorf("add output %q missing title", out)
 	}
 
 	// List from within the project directory must show the todo
-	out, err = bliss(t, proj, env, "list")
+	out, err := bliss(t, proj, env, "list")
 	if err != nil {
 		t.Fatalf("list: %v\n%s", err, out)
 	}
@@ -244,16 +227,12 @@ func TestAdd_contextFlagCreatesContextIfMissing(t *testing.T) {
 	dir := t.TempDir()
 
 	// Use --context with a name that has never been initialized
-	out, err := bliss(t, dir, env, "add", "--context", "brand-new", "First task")
-	if err != nil {
+	if out, err := bliss(t, dir, env, "add", "--context", "brand-new", "First task"); err != nil {
 		t.Fatalf("add --context brand-new: %v\n%s", err, out)
-	}
-	if !strings.Contains(out, "First task") {
-		t.Errorf("add output %q missing title", out)
 	}
 
 	// The context should now exist and the todo should be listed
-	out, err = bliss(t, dir, env, "list", "--context", "brand-new")
+	out, err := bliss(t, dir, env, "list", "--context", "brand-new")
 	if err != nil {
 		t.Fatalf("list --context brand-new: %v\n%s", err, out)
 	}

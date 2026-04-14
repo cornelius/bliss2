@@ -13,13 +13,16 @@
 # ── bliss add ────────────────────────────────────────────────────────────────
 
 # No list (goes to incoming):
-Added: Check in with security team
+Added to my-project/incoming
 
 # To a named list:
-Added to today: Review PR #412
+Added to my-project/today
 
-# To a named list, urgent:
-Added to today: Hotfix: prod is down
+# Personal mode (no context), incoming:
+Added to incoming
+
+# Personal mode, named list:
+Added to today
 
 
 # ── bliss done ───────────────────────────────────────────────────────────────

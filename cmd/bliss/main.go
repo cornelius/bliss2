@@ -293,11 +293,14 @@ func addCmd() *cobra.Command {
 				return fmt.Errorf("committing: %w", err)
 			}
 
-			if listName != "" {
-				fmt.Println(stMuted.Render("Added to") + " " + stBold.Render(listName) + stMuted.Render(":") + " " + title)
-			} else {
-				fmt.Println(stMuted.Render("Added:") + " " + title)
+			target := listName
+			if target == "" {
+				target = "incoming"
 			}
+			if contextName != "" {
+				target = contextName + "/" + target
+			}
+			fmt.Println(stMuted.Render("Added to") + " " + stBold.Render(target))
 			return nil
 		},
 	}
