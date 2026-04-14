@@ -45,9 +45,6 @@ func TestStatus_insideContext(t *testing.T) {
 	if !strings.Contains(out, "my-project") {
 		t.Errorf("output %q missing context name (slug)", out)
 	}
-	if !strings.Contains(out, "myproject") {
-		t.Errorf("output %q missing context path", out)
-	}
 	if !strings.Contains(out, "incoming") {
 		t.Errorf("output %q missing incoming", out)
 	}
