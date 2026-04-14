@@ -15,7 +15,7 @@ All data lives in a single directory in the user's home:
 ```
 ~/.bliss2/
   contexts/
-    <context-uuid>/
+    <slug>/
       meta.yaml
       todos/
         <todo-uuid>.md
@@ -25,8 +25,8 @@ All data lives in a single directory in the user's home:
     <list-name>.txt
 ```
 
-- `contexts/` contains one subdirectory per context, named by UUID.
-- `meta.yaml` stores the human-readable name of the context and the filesystem path to the context directory, keyed by hostname.
+- `contexts/` contains one subdirectory per context, named by slug.
+- `meta.yaml` stores the context creation time and the filesystem path to the context directory, keyed by hostname.
 - `todos/` contains one file per todo, named by UUID.
 - `lists/` inside a context contains shared, context-specific list files.
 - `lists/` at the store root contains personal, cross-context list files.
@@ -36,14 +36,16 @@ All data lives in a single directory in the user's home:
 Context metadata is stored in `meta.yaml`:
 
 ```yaml
-name: bliss2
+created_at: 2026-01-15T10:30:00Z
 paths:
   thinkpad: /home/cs/git/bliss2
   macbook: /Users/cs/projects/bliss2
 ```
 
-- `name` is the human-readable context name, shared across all machines.
+- `created_at` records when the context was created.
 - `paths` maps hostname to the local filesystem path where the context lives on that machine.
+
+The context's human-readable identity is its slug — the directory name under `contexts/` — shared across all machines.
 
 Each machine writes only its own entry under `paths`. This means the file can be synced via git across machines without conflicts — every host owns a distinct key. A stale entry for a machine that no longer exists is harmless.
 
@@ -55,10 +57,10 @@ A directory is associated with a context by placing a `.bliss-context` file in i
 ~/my-project/.bliss-context
 ```
 
-The file contains a single UUID identifying the context in the store:
+The file contains the context's slug, identifying the context in the store:
 
 ```
-7f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+my-project
 ```
 
 The CLI finds the context by walking up the directory tree from the current working directory, using the first `.bliss-context` file found. This mirrors the behavior of git.
@@ -162,9 +164,11 @@ Reprioritizing a todo only modifies the list file — the todo file itself is ne
 
 Completing a todo deletes its file from `todos/`. Any references to its UUID in list files are also removed. Git history preserves the full content and lifecycle of the todo.
 
-## UUIDs
+## Identifiers
 
-All identifiers — todos and contexts — are UUIDs, generated at creation time and globally unique. UUIDs are never exposed to the user. The CLI always presents human-readable names and titles.
+Todos are identified by UUIDs, generated at creation time and globally unique. Todo UUIDs are never exposed to the user — the CLI always presents human-readable titles.
+
+Contexts are identified by a slug — a lowercase, hyphen-separated string derived from the context name at creation time. The slug is both the directory name under `contexts/` and the human-readable identity shown to the user.
 
 ## Timestamps
 
@@ -198,7 +202,7 @@ An alternative design would place a `.bliss/` directory inside each project dire
 - Project directories are not cluttered with todo data.
 - Todos are completely decoupled from the project filesystem structure — renaming or moving a project directory does not affect the store.
 
-The `.bliss-context` marker file is the only artifact in a project directory. It contains a UUID, so renaming or moving the directory never breaks the link to the store.
+The `.bliss-context` marker file is the only artifact in a project directory. It contains the context slug, so renaming or moving the directory never breaks the link to the store.
 
 ### Git as storage backend
 
