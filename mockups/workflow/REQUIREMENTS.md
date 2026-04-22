@@ -18,7 +18,7 @@ Each command answers a different question:
 
 ## What must never appear
 - A `bliss <command>` header banner — workflow commands do not have overview headers
-- The context UUID (internal detail, never user-facing)
+- Internal-only identifiers — the context name (slug) shown in init output is the same one stored on disk; nothing else from the store should leak into command output
 - Brackets around list names — use plain bold list name instead of `[today]`
 
 ## Variants
@@ -42,8 +42,8 @@ Each command answers a different question:
 - **No brackets on list names.** `[today]` → `today` (bold). Brackets were a
   placeholder convention; the bold weight is sufficient to distinguish the list
   name from the surrounding text.
-- **UUID hidden from init output.** The UUID is an implementation detail.
-  The name and path are what the user needs to confirm.
+- **No store-internal identifiers in init output.** The user-visible context
+  name (slug) is what they need to confirm, alongside the path.
 - **Single line only.** These are transactional confirmations. No multi-line
   layout, no section structure.
 - **`bliss add` does not echo the title.** The user just typed it (or piped it

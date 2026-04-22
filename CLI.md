@@ -97,9 +97,9 @@ Non-interactive commands produce plain text output or perform a single action. T
 
 Initializes a context in the current directory.
 
-- Creates a `.bliss-context` marker file containing a new UUID.
-- Creates the corresponding context directory in `~/.bliss2/contexts/<uuid>/`.
-- Derives the context name from the current directory name. Can be overridden with `--name <name>`.
+- Creates a `.bliss-context` marker file containing the context slug.
+- Creates the corresponding context directory in `~/.bliss2/contexts/<slug>/`.
+- Derives the context name from the current directory name and slugifies it. Can be overridden with `--name <name>`.
 - If a `.bliss-context` file is found by walking up the directory tree, the user is informed that a parent context exists. A nested context is created regardless.
 - Refuses to run in a directory that already has a `.bliss-context`, unless `--force/-f` is given.
 
@@ -275,7 +275,7 @@ Scans the store for known problems and reports or fixes them.
 
 Checks include:
 
-- **Stale context paths**: contexts whose recorded init path no longer contains a `.bliss-context` file pointing to the correct UUID. Reports the context name and stale path.
+- **Stale context paths**: contexts whose recorded init path no longer contains a `.bliss-context` file pointing to the correct slug. Reports the context name and stale path.
 - **Missing `.gitignore`**: verifies `~/.bliss2/.gitignore` exists and contains `session.txt`. If missing, creates it. (`session.txt` is machine-local state and must not be version-controlled.)
 
 ```
