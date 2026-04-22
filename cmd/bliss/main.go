@@ -72,9 +72,10 @@ func rootCmd() *cobra.Command {
 	return root
 }
 
-// initCmd implements `bliss init [--name <name>]`
+// initCmd implements `bliss init [--name <name>] [--force]`
 func initCmd() *cobra.Command {
 	var name string
+	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -102,9 +103,9 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("cannot init a context in the home directory — use personal mode instead")
 			}
 
-			// Refuse to re-initialize a directory that already has a context.
-			if existing, err := blisscontext.ReadContextFile(cwd); err == nil && existing != "" {
-				return fmt.Errorf("already initialized as context %s", existing)
+			previousContext, _ := blisscontext.ReadContextFile(cwd)
+			if previousContext != "" && !force {
+				return fmt.Errorf("already initialized as context %s (use --force to reinitialize)", previousContext)
 			}
 
 			// Check for parent context
@@ -124,14 +125,26 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("initializing store: %w", err)
 			}
 
+			// On --force with a switch to a different context, drop this host's
+			// link from the previous context so it stops claiming this directory.
+			cleared := ""
+			if previousContext != "" && previousContext != contextName && s.ContextExists(previousContext) {
+				if err := s.RemoveHostPath(previousContext); err != nil {
+					return fmt.Errorf("clearing previous context link: %w", err)
+				}
+				cleared = previousContext
+			}
+
 			// If the context already exists, link this directory to it (cross-machine story).
 			if s.ContextExists(contextName) {
-				fmt.Printf("Context '%s' already exists. Link this directory to it? [Y/n] ", contextName)
-				var answer string
-				fmt.Scanln(&answer)
-				answer = strings.ToLower(strings.TrimSpace(answer))
-				if answer != "" && answer != "y" && answer != "yes" {
-					return fmt.Errorf("aborted")
+				if !force {
+					fmt.Printf("Context '%s' already exists. Link this directory to it? [Y/n] ", contextName)
+					var answer string
+					fmt.Scanln(&answer)
+					answer = strings.ToLower(strings.TrimSpace(answer))
+					if answer != "" && answer != "y" && answer != "yes" {
+						return fmt.Errorf("aborted")
+					}
 				}
 
 				if err := s.WriteContextMeta(contextName, cwd); err != nil {
@@ -140,10 +153,17 @@ func initCmd() *cobra.Command {
 				if err := blisscontext.WriteContextFile(cwd, contextName); err != nil {
 					return fmt.Errorf("writing .bliss-context: %w", err)
 				}
-				if err := s.Commit(fmt.Sprintf("link context %s to %s", contextName, cwd)); err != nil {
+				msg := fmt.Sprintf("link context %s to %s", contextName, cwd)
+				if cleared != "" {
+					msg += fmt.Sprintf(" (cleared from %s)", cleared)
+				}
+				if err := s.Commit(msg); err != nil {
 					return fmt.Errorf("committing: %w", err)
 				}
 				short := shortenHomePath(cwd)
+				if cleared != "" {
+					fmt.Println(stMuted.Render("Cleared previous link from") + " " + stBold.Render(cleared))
+				}
 				fmt.Println(stMuted.Render("Linked to existing context") + "  " +
 					stMuted.Render("Context:") + " " + stBold.Render(contextName) +
 					"  " + stMuted.Render("Path:") + " " + stPath.Render(short))
@@ -160,11 +180,18 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("writing .bliss-context: %w", err)
 			}
 
-			if err := s.Commit(fmt.Sprintf("init context %s", contextName)); err != nil {
+			msg := fmt.Sprintf("init context %s", contextName)
+			if cleared != "" {
+				msg += fmt.Sprintf(" (cleared from %s)", cleared)
+			}
+			if err := s.Commit(msg); err != nil {
 				return fmt.Errorf("committing: %w", err)
 			}
 
 			short := shortenHomePath(cwd)
+			if cleared != "" {
+				fmt.Println(stMuted.Render("Cleared previous link from") + " " + stBold.Render(cleared))
+			}
 			fmt.Println(stMuted.Render("Initialized") + "  " +
 				stMuted.Render("Context:") + " " + stBold.Render(contextName) +
 				"  " + stMuted.Render("Path:") + " " + stPath.Render(short))
@@ -173,6 +200,7 @@ func initCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&name, "name", "", "Context name (default: current directory name)")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Reinitialize even if this directory is already linked to a context")
 	return cmd
 }
 

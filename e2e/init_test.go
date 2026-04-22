@@ -143,6 +143,75 @@ func TestInit_slugifiesName(t *testing.T) {
 	}
 }
 
+func TestInit_alreadyInitializedSuggestsForce(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "proj")
+	os.MkdirAll(proj, 0755)
+
+	if _, err := bliss(t, proj, env, "init"); err != nil {
+		t.Fatalf("first init: %v", err)
+	}
+
+	out, _ := bliss(t, proj, env, "init")
+	if !strings.Contains(out, "--force") {
+		t.Errorf("error output should suggest --force, got: %s", out)
+	}
+}
+
+func TestInit_forceReinitSameContext(t *testing.T) {
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "proj")
+	os.MkdirAll(proj, 0755)
+
+	if _, err := bliss(t, proj, env, "init"); err != nil {
+		t.Fatalf("first init: %v", err)
+	}
+
+	out, err := bliss(t, proj, env, "init", "--force")
+	if err != nil {
+		t.Fatalf("force reinit: %v\n%s", err, out)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(proj, ".bliss-context"))
+	if strings.TrimSpace(string(data)) != "proj" {
+		t.Errorf(".bliss-context = %q, want %q", strings.TrimSpace(string(data)), "proj")
+	}
+}
+
+func TestInit_forceSwitchesContext(t *testing.T) {
+	// Re-initializing as a different name must clear this host's link from the
+	// previous context so it stops claiming this directory.
+	home, env := blissEnv(t)
+	proj := filepath.Join(home, "old-name")
+	os.MkdirAll(proj, 0755)
+
+	if _, err := bliss(t, proj, env, "init"); err != nil {
+		t.Fatalf("first init: %v", err)
+	}
+
+	out, err := bliss(t, proj, env, "init", "--name", "new-name", "--force")
+	if err != nil {
+		t.Fatalf("force switch: %v\n%s", err, out)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(proj, ".bliss-context"))
+	if strings.TrimSpace(string(data)) != "new-name" {
+		t.Errorf(".bliss-context = %q, want %q", strings.TrimSpace(string(data)), "new-name")
+	}
+
+	// The previous context's paths/<hostname>.yaml must be gone — otherwise
+	// the old context still claims this directory on this host.
+	oldPathsDir := filepath.Join(home, ".bliss2", "contexts", "old-name", "paths")
+	entries, _ := os.ReadDir(oldPathsDir)
+	if len(entries) != 0 {
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf("old context still has host link(s) after force-switch: %v", names)
+	}
+}
+
 func TestInit_linksExistingContext(t *testing.T) {
 	home, env := blissEnv(t)
 

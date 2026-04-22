@@ -101,10 +101,15 @@ Initializes a context in the current directory.
 - Creates the corresponding context directory in `~/.bliss2/contexts/<uuid>/`.
 - Derives the context name from the current directory name. Can be overridden with `--name <name>`.
 - If a `.bliss-context` file is found by walking up the directory tree, the user is informed that a parent context exists. A nested context is created regardless.
+- Refuses to run in a directory that already has a `.bliss-context`, unless `--force/-f` is given.
+
+`--force/-f` reinitializes a directory that is already linked to a context. If the new context name differs from the previous one, this host's link to the previous context is removed (its `paths/<hostname>.yaml` entry is deleted) so the previous context no longer claims this directory. The previous context's data on other machines is untouched.
 
 ```
 bliss init
 bliss init --name "My Project"
+bliss init --force                  # re-link as the same context
+bliss init --name correct --force   # switch this directory to a different context
 ```
 
 #### `bliss add <title>`

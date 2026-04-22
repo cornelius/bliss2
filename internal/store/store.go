@@ -267,6 +267,42 @@ func (s *Store) writeHostPath(contextName, host, path string) error {
 	return os.WriteFile(s.hostPathFile(contextName, host), data, 0644)
 }
 
+// RemoveHostPath removes the current host's link to the given context.
+// Removes paths/<hostname>.yaml and also strips the host from any legacy
+// in-meta paths map. No-op if no such link exists.
+func (s *Store) RemoveHostPath(contextName string) error {
+	host, _ := os.Hostname()
+
+	if err := os.Remove(s.hostPathFile(contextName, host)); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing host path file: %w", err)
+	}
+
+	metaPath := filepath.Join(s.ContextDir(contextName), "meta.yaml")
+	data, err := os.ReadFile(metaPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading meta.yaml: %w", err)
+	}
+	var m contextMeta
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		return fmt.Errorf("parsing meta.yaml: %w", err)
+	}
+	if _, ok := m.Paths[host]; !ok {
+		return nil
+	}
+	delete(m.Paths, host)
+	if len(m.Paths) == 0 {
+		m.Paths = nil
+	}
+	out, err := yaml.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("marshaling meta.yaml: %w", err)
+	}
+	return os.WriteFile(metaPath, out, 0644)
+}
+
 func (s *Store) WriteTodo(contextName string, t todo.Todo) error {
 	todosDir := s.TodosDir(contextName)
 	if err := os.MkdirAll(todosDir, 0755); err != nil {

@@ -474,6 +474,68 @@ func TestWriteContextMeta_createdAtPreserved(t *testing.T) {
 	}
 }
 
+func TestRemoveHostPath_present(t *testing.T) {
+	s := newTestStore(t)
+	contextName := "linked-here"
+
+	if err := s.WriteContextMeta(contextName, "/home/cs/proj"); err != nil {
+		t.Fatalf("WriteContextMeta: %v", err)
+	}
+	if err := s.RemoveHostPath(contextName); err != nil {
+		t.Fatalf("RemoveHostPath: %v", err)
+	}
+
+	got, err := s.ReadContextMeta(contextName)
+	if err != nil {
+		t.Fatalf("ReadContextMeta: %v", err)
+	}
+	if got != "" {
+		t.Errorf("path = %q, want empty after RemoveHostPath", got)
+	}
+
+	host, _ := os.Hostname()
+	if _, err := os.Stat(filepath.Join(s.ContextDir(contextName), "paths", host+".yaml")); !os.IsNotExist(err) {
+		t.Errorf("host path file still exists after RemoveHostPath: stat err = %v", err)
+	}
+}
+
+func TestRemoveHostPath_absent(t *testing.T) {
+	s := newTestStore(t)
+	contextName := "never-linked"
+
+	dir := s.ContextDir(contextName)
+	os.MkdirAll(dir, 0755)
+
+	if err := s.RemoveHostPath(contextName); err != nil {
+		t.Errorf("RemoveHostPath on a context this host never linked: %v", err)
+	}
+}
+
+func TestRemoveHostPath_legacyMeta(t *testing.T) {
+	// A pre-migration meta.yaml with paths map: RemoveHostPath should strip
+	// this host's entry without disturbing other hosts'.
+	s := newTestStore(t)
+	contextName := "legacy"
+	host, _ := os.Hostname()
+
+	dir := s.ContextDir(contextName)
+	os.MkdirAll(dir, 0755)
+	legacy := fmt.Sprintf("created_at: 2026-01-01T00:00:00Z\npaths:\n  %s: /me/here\n  other-host: /them/there\n", host)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte(legacy), 0644)
+
+	if err := s.RemoveHostPath(contextName); err != nil {
+		t.Fatalf("RemoveHostPath: %v", err)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(dir, "meta.yaml"))
+	if strings.Contains(string(data), host+":") {
+		t.Errorf("current host still present in meta.yaml after RemoveHostPath:\n%s", data)
+	}
+	if !strings.Contains(string(data), "other-host") {
+		t.Errorf("other host stripped by RemoveHostPath:\n%s", data)
+	}
+}
+
 func TestListContextNames(t *testing.T) {
 	s := newTestStore(t)
 
