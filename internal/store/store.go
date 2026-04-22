@@ -141,8 +141,12 @@ func (s *Store) PersonalListsDir() string {
 	return filepath.Join(s.path, "lists")
 }
 
+// CreatedAt is held as a string (not time.Time) so that meta.yaml files
+// produced by other YAML emitters — which may use YAML 1.1's space-separated
+// timestamp format instead of RFC3339 — can be read without parse errors.
+// We only check whether the field is set; we never compute on the value.
 type contextMeta struct {
-	CreatedAt time.Time `yaml:"created_at,omitempty"`
+	CreatedAt string `yaml:"created_at,omitempty"`
 	// Paths is the legacy in-meta map, kept for read-side migration only.
 	// New writes never populate it; the field is stripped on the next WriteContextMeta.
 	Paths map[string]string `yaml:"paths,omitempty"`
@@ -235,8 +239,8 @@ func (s *Store) WriteContextMeta(contextName, path string) error {
 	if data, err := os.ReadFile(metaPath); err == nil {
 		yaml.Unmarshal(data, &m)
 	}
-	if m.CreatedAt.IsZero() {
-		m.CreatedAt = time.Now().UTC()
+	if m.CreatedAt == "" {
+		m.CreatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
 	// Migrate any legacy in-meta paths map to per-host files.

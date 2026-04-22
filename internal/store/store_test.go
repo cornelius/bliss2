@@ -474,6 +474,30 @@ func TestWriteContextMeta_createdAtPreserved(t *testing.T) {
 	}
 }
 
+func TestContextMeta_acceptsYAML11Timestamp(t *testing.T) {
+	// meta.yaml produced by other emitters (e.g. PyYAML) may carry a
+	// YAML 1.1 timestamp with a space separator instead of RFC3339's "T".
+	// All readers and writers must tolerate it.
+	s := newTestStore(t)
+	contextName := "yaml11-ts"
+	host, _ := os.Hostname()
+
+	dir := s.ContextDir(contextName)
+	os.MkdirAll(dir, 0755)
+	yaml11 := fmt.Sprintf("created_at: 2026-04-19 06:30:36.277888+00:00\npaths:\n  %s: /me/here\n", host)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte(yaml11), 0644)
+
+	if _, err := s.ReadContextMeta(contextName); err != nil {
+		t.Errorf("ReadContextMeta should tolerate YAML 1.1 timestamp: %v", err)
+	}
+	if err := s.RemoveHostPath(contextName); err != nil {
+		t.Errorf("RemoveHostPath should tolerate YAML 1.1 timestamp: %v", err)
+	}
+	if err := s.WriteContextMeta(contextName, "/me/here"); err != nil {
+		t.Errorf("WriteContextMeta should tolerate YAML 1.1 timestamp: %v", err)
+	}
+}
+
 func TestRemoveHostPath_present(t *testing.T) {
 	s := newTestStore(t)
 	contextName := "linked-here"
