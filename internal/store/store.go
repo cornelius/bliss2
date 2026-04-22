@@ -142,13 +142,39 @@ func (s *Store) PersonalListsDir() string {
 }
 
 type contextMeta struct {
-	CreatedAt time.Time         `yaml:"created_at,omitempty"`
-	Paths     map[string]string `yaml:"paths,omitempty"`
+	CreatedAt time.Time `yaml:"created_at,omitempty"`
+	// Paths is the legacy in-meta map, kept for read-side migration only.
+	// New writes never populate it; the field is stripped on the next WriteContextMeta.
+	Paths map[string]string `yaml:"paths,omitempty"`
+}
+
+type hostPath struct {
+	Path string `yaml:"path"`
+}
+
+func (s *Store) pathsDir(contextName string) string {
+	return filepath.Join(s.ContextDir(contextName), "paths")
+}
+
+func (s *Store) hostPathFile(contextName, host string) string {
+	return filepath.Join(s.pathsDir(contextName), host+".yaml")
 }
 
 // ReadContextMeta returns the local path for the current machine for the given
 // context name. The path is empty if this machine has never linked the context.
 func (s *Store) ReadContextMeta(contextName string) (path string, err error) {
+	host, _ := os.Hostname()
+
+	// Preferred location: paths/<hostname>.yaml.
+	if data, readErr := os.ReadFile(s.hostPathFile(contextName, host)); readErr == nil {
+		var hp hostPath
+		if err := yaml.Unmarshal(data, &hp); err != nil {
+			return "", fmt.Errorf("parsing %s.yaml: %w", host, err)
+		}
+		return hp.Path, nil
+	}
+
+	// Fallback: legacy paths map embedded in meta.yaml.
 	data, err := os.ReadFile(filepath.Join(s.ContextDir(contextName), "meta.yaml"))
 	if err != nil {
 		return "", err
@@ -157,7 +183,6 @@ func (s *Store) ReadContextMeta(contextName string) (path string, err error) {
 	if err := yaml.Unmarshal(data, &m); err != nil {
 		return "", fmt.Errorf("parsing meta.yaml: %w", err)
 	}
-	host, _ := os.Hostname()
 	return m.Paths[host], nil
 }
 
@@ -185,8 +210,10 @@ func (s *Store) ContextExists(contextName string) bool {
 	return err == nil
 }
 
-// WriteContextMeta writes or updates meta.yaml for the given context name.
-// It preserves other machines' path entries and the original created_at timestamp.
+// WriteContextMeta writes the local machine's path for the given context to
+// paths/<hostname>.yaml and ensures meta.yaml carries created_at. If a legacy
+// meta.yaml with an embedded paths map is present, each foreign host entry is
+// migrated to its own paths/<hostname>.yaml file and the paths map is dropped.
 func (s *Store) WriteContextMeta(contextName, path string) error {
 	dir := s.ContextDir(contextName)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -198,10 +225,12 @@ func (s *Store) WriteContextMeta(contextName, path string) error {
 	if err := os.MkdirAll(filepath.Join(dir, "lists"), 0755); err != nil {
 		return fmt.Errorf("creating lists dir: %w", err)
 	}
+	if err := os.MkdirAll(s.pathsDir(contextName), 0755); err != nil {
+		return fmt.Errorf("creating paths dir: %w", err)
+	}
 
 	metaPath := filepath.Join(dir, "meta.yaml")
 
-	// Read existing meta to preserve other hosts' paths and created_at.
 	var m contextMeta
 	if data, err := os.ReadFile(metaPath); err == nil {
 		yaml.Unmarshal(data, &m)
@@ -209,17 +238,33 @@ func (s *Store) WriteContextMeta(contextName, path string) error {
 	if m.CreatedAt.IsZero() {
 		m.CreatedAt = time.Now().UTC()
 	}
-	if m.Paths == nil {
-		m.Paths = make(map[string]string)
+
+	// Migrate any legacy in-meta paths map to per-host files.
+	for host, p := range m.Paths {
+		if err := s.writeHostPath(contextName, host, p); err != nil {
+			return err
+		}
 	}
+	m.Paths = nil
+
 	host, _ := os.Hostname()
-	m.Paths[host] = path
+	if err := s.writeHostPath(contextName, host, path); err != nil {
+		return err
+	}
 
 	data, err := yaml.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("marshaling meta.yaml: %w", err)
 	}
 	return os.WriteFile(metaPath, data, 0644)
+}
+
+func (s *Store) writeHostPath(contextName, host, path string) error {
+	data, err := yaml.Marshal(hostPath{Path: path})
+	if err != nil {
+		return fmt.Errorf("marshaling host path: %w", err)
+	}
+	return os.WriteFile(s.hostPathFile(contextName, host), data, 0644)
 }
 
 func (s *Store) WriteTodo(contextName string, t todo.Todo) error {

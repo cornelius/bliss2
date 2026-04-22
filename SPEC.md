@@ -17,6 +17,8 @@ All data lives in a single directory in the user's home:
   contexts/
     <slug>/
       meta.yaml
+      paths/
+        <hostname>.yaml
       todos/
         <todo-uuid>.md
       lists/
@@ -26,28 +28,39 @@ All data lives in a single directory in the user's home:
 ```
 
 - `contexts/` contains one subdirectory per context, named by slug.
-- `meta.yaml` stores the context creation time and the filesystem path to the context directory, keyed by hostname.
+- `meta.yaml` stores context-wide metadata (currently just the creation time).
+- `paths/` contains one file per machine that has linked this context, named by hostname.
 - `todos/` contains one file per todo, named by UUID.
 - `lists/` inside a context contains shared, context-specific list files.
 - `lists/` at the store root contains personal, cross-context list files.
 
 ## Context Metadata
 
-Context metadata is stored in `meta.yaml`:
+Context-wide metadata is stored in `meta.yaml`:
 
 ```yaml
 created_at: 2026-01-15T10:30:00Z
-paths:
-  thinkpad: /home/cs/git/bliss2
-  macbook: /Users/cs/projects/bliss2
 ```
 
-- `created_at` records when the context was created.
-- `paths` maps hostname to the local filesystem path where the context lives on that machine.
+- `created_at` records when the context was first created on any machine.
 
 The context's human-readable identity is its slug — the directory name under `contexts/` — shared across all machines.
 
-Each machine writes only its own entry under `paths`. This means the file can be synced via git across machines without conflicts — every host owns a distinct key. A stale entry for a machine that no longer exists is harmless.
+## Per-Machine Paths
+
+Each machine that has linked the context writes a single file under `paths/`, named after its hostname:
+
+```yaml
+# contexts/my-project/paths/thinkpad.yaml
+path: /home/cs/git/bliss2
+```
+
+```yaml
+# contexts/my-project/paths/macbook.yaml
+path: /Users/cs/projects/bliss2
+```
+
+Each machine writes only its own file. Independent edits on different machines never touch the same file, so the layout is conflict-free under git merge. Even if two machines run `bliss init` for the same context name before syncing, the resulting `paths/<hostname>.yaml` files do not collide. A stale file for a machine that no longer exists is harmless and can be removed by hand.
 
 ## Context Markers
 

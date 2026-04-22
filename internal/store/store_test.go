@@ -3,6 +3,7 @@ package store
 import (
 	"bliss/internal/list"
 	"bliss/internal/todo"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -298,13 +299,14 @@ func TestWriteReadContextMeta_withPath(t *testing.T) {
 }
 
 func TestReadContextMeta_unknownHost(t *testing.T) {
-	// meta.yaml exists but has no entry for the current host — path should be empty.
+	// Context exists but has no entry for the current host — path should be empty.
 	s := newTestStore(t)
 	contextName := "other-project"
 
 	dir := s.ContextDir(contextName)
-	os.MkdirAll(dir, 0755)
-	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("paths:\n  other-host: /home/other/project\n"), 0644)
+	os.MkdirAll(filepath.Join(dir, "paths"), 0755)
+	os.WriteFile(filepath.Join(dir, "paths", "other-host.yaml"), []byte("path: /home/other/project\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("created_at: 2026-01-01T00:00:00Z\n"), 0644)
 
 	path, err := s.ReadContextMeta(contextName)
 	if err != nil {
@@ -316,24 +318,94 @@ func TestReadContextMeta_unknownHost(t *testing.T) {
 }
 
 func TestWriteContextMeta_preservesOtherHosts(t *testing.T) {
-	// Writing meta on the current host should not remove other hosts' paths.
+	// Writing on the current host must leave another host's paths/<hostname>.yaml untouched.
 	s := newTestStore(t)
 	contextName := "shared-project"
 
 	dir := s.ContextDir(contextName)
-	os.MkdirAll(dir, 0755)
-	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte("paths:\n  other-host: /home/other/project\n"), 0644)
+	os.MkdirAll(filepath.Join(dir, "paths"), 0755)
+	otherFile := filepath.Join(dir, "paths", "other-host.yaml")
+	original := []byte("path: /home/other/project\n")
+	os.WriteFile(otherFile, original, 0644)
 
 	if err := s.WriteContextMeta(contextName, "/home/cs/project"); err != nil {
 		t.Fatalf("WriteContextMeta: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(dir, "meta.yaml"))
+	got, err := os.ReadFile(otherFile)
+	if err != nil {
+		t.Fatalf("reading other host's path file: %v", err)
+	}
+	if string(got) != string(original) {
+		t.Errorf("other host's path file was modified: got %q, want %q", got, original)
+	}
+}
+
+func TestReadContextMeta_legacyMetaFallback(t *testing.T) {
+	// A pre-migration meta.yaml with an embedded paths map should still resolve
+	// the current host's path when no paths/<hostname>.yaml exists.
+	s := newTestStore(t)
+	contextName := "legacy-project"
+	host, _ := os.Hostname()
+
+	dir := s.ContextDir(contextName)
+	os.MkdirAll(dir, 0755)
+	legacy := fmt.Sprintf("created_at: 2026-01-01T00:00:00Z\npaths:\n  %s: /legacy/path\n  other-host: /home/other/proj\n", host)
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte(legacy), 0644)
+
+	path, err := s.ReadContextMeta(contextName)
+	if err != nil {
+		t.Fatalf("ReadContextMeta: %v", err)
+	}
+	if path != "/legacy/path" {
+		t.Errorf("path = %q, want /legacy/path", path)
+	}
+}
+
+func TestWriteContextMeta_migratesLegacyPaths(t *testing.T) {
+	// On the next write, a legacy paths map must be split into per-host files
+	// and stripped from meta.yaml — created_at is preserved.
+	s := newTestStore(t)
+	contextName := "migrate-project"
+	host, _ := os.Hostname()
+
+	dir := s.ContextDir(contextName)
+	os.MkdirAll(dir, 0755)
+	legacy := "created_at: 2026-01-01T00:00:00Z\npaths:\n  other-host: /home/other/proj\n"
+	os.WriteFile(filepath.Join(dir, "meta.yaml"), []byte(legacy), 0644)
+
+	if err := s.WriteContextMeta(contextName, "/home/cs/proj"); err != nil {
+		t.Fatalf("WriteContextMeta: %v", err)
+	}
+
+	// Foreign host's entry has been split out into its own file.
+	otherData, err := os.ReadFile(filepath.Join(dir, "paths", "other-host.yaml"))
+	if err != nil {
+		t.Fatalf("foreign host file not created: %v", err)
+	}
+	if !strings.Contains(string(otherData), "/home/other/proj") {
+		t.Errorf("foreign host path not migrated: %s", otherData)
+	}
+
+	// Current host's entry is written.
+	hostData, err := os.ReadFile(filepath.Join(dir, "paths", host+".yaml"))
+	if err != nil {
+		t.Fatalf("current host file not created: %v", err)
+	}
+	if !strings.Contains(string(hostData), "/home/cs/proj") {
+		t.Errorf("current host path not written: %s", hostData)
+	}
+
+	// meta.yaml no longer carries a paths map but keeps created_at.
+	metaData, err := os.ReadFile(filepath.Join(dir, "meta.yaml"))
 	if err != nil {
 		t.Fatalf("reading meta.yaml: %v", err)
 	}
-	if !strings.Contains(string(data), "other-host") {
-		t.Errorf("other host's path was lost: %s", data)
+	if strings.Contains(string(metaData), "paths:") {
+		t.Errorf("meta.yaml still contains paths map after migration:\n%s", metaData)
+	}
+	if !strings.Contains(string(metaData), "2026-01-01") {
+		t.Errorf("created_at not preserved through migration:\n%s", metaData)
 	}
 }
 

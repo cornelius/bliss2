@@ -55,16 +55,22 @@ Contexts are identified by a **slug** — a lowercase, hyphen-separated string d
 - Used as the context's directory name in the store: `~/.bliss2/contexts/<slug>/`.
 - The stable, human-readable identity for the context — no UUID is used.
 
-`meta.yaml` inside each context directory stores:
+`meta.yaml` inside each context directory holds context-wide metadata:
 
 ```yaml
 created_at: 2026-01-15T10:30:00Z
-paths:
-  thinkpad: /home/cs/git/my-project
-  macbook: /Users/cs/projects/my-project
 ```
 
-The `paths` map records the local filesystem path for each machine (keyed by hostname). This is the **cross-machine context linking** mechanism.
+Per-machine filesystem paths live in a sibling `paths/` directory, one file per host:
+
+```
+contexts/my-project/
+  paths/
+    thinkpad.yaml   # path: /home/cs/git/my-project
+    macbook.yaml    # path: /Users/cs/projects/my-project
+```
+
+This is the **cross-machine context linking** mechanism. Each host writes only its own `paths/<hostname>.yaml`, so independent edits never collide under git merge.
 
 ### Cross-machine linking
 
@@ -72,12 +78,14 @@ The same context can exist on multiple machines. To link a second machine:
 
 1. Run `bliss sync` to pull the store (which includes the context directory).
 2. Run `bliss init --name "My Project"` (or just `bliss init` if the directory name matches) in the project directory on the new machine.
-3. Because `~/.bliss2/contexts/my-project/` already exists (pulled via sync), `bliss init` detects the collision and offers to **link** rather than create. Confirming adds the current machine's path to `meta.yaml` under `paths` and writes `.bliss-context`.
+3. Because `~/.bliss2/contexts/my-project/` already exists (pulled via sync), `bliss init` detects the collision and offers to **link** rather than create. Confirming writes `paths/<hostname>.yaml` for the current machine and writes `.bliss-context`.
+
+If two machines run `bliss init` for the same slug before syncing, no merge conflict is produced: each machine writes a distinct `paths/<hostname>.yaml`, and the only shared file (`meta.yaml`) is written with the same content on both sides. The earlier-created copy of `meta.yaml` survives the merge by virtue of being identical or near-identical; if `created_at` differs, prefer the older value.
 
 This design means:
 - Each machine knows its own local path to the project.
 - Context data (todos, lists) is shared via git sync.
-- Renaming or moving the project directory on one machine does not affect other machines — each manages its own `paths` entry.
+- Renaming or moving the project directory on one machine does not affect other machines — each manages its own `paths/<hostname>.yaml`.
 
 ## Error Handling
 
