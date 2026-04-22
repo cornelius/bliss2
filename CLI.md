@@ -325,6 +325,7 @@ Interactive grooming mode for organizing todos across lists.
 - Shows one list at a time. The current list fills the view with todos in order including section separators.
 - Todos already acted on in the current session are marked as touched and not shown again, even if they appear in another list during the session. Touched state is in-memory only and is lost when grooming ends.
 - **TODO:** add `--context/-c` flag for consistency with other commands (currently relies on CWD-based context detection only).
+- **TODO:** support moving todos between contexts (e.g. promoting a personal todo into a project context, or shifting a todo from one project to another). `bliss move` only moves between lists within a single context; cross-context moves should live here as a grooming mode/option rather than a separate non-interactive command.
 
 ##### Default Lists
 
