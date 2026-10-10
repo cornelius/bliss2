@@ -20,7 +20,7 @@ go build ./cmd/bliss
 
 **Never test manually.** If something needs verifying, write a test for it. Manual runs are not repeatable and don't protect against regressions.
 
-New behavioral tests go in `cmd/bliss/e2e/` (invoke the real binary, verify the user contract). Internal logic tests go alongside their package. See ARCHITECTURE.md § Testing for the full strategy.
+New behavioral tests go in `e2e/` (invoke the real binary, verify the user contract). Internal logic tests go alongside their package. See ARCHITECTURE.md § Testing for the full strategy.
 
 ## Local todos
 

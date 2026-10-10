@@ -97,7 +97,7 @@ This design means:
 Two distinct layers, with different purposes. Some overlap between them is
 expected and fine — they are not solving the same problem.
 
-### E2e tests (`cmd/bliss/e2e/`)
+### E2e tests (`e2e/`)
 
 E2e tests verify the **user contract**. They invoke the real `bliss` binary,
 set up state through the CLI, and assert on observable output and exit codes.

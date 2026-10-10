@@ -6,7 +6,7 @@ import (
 )
 
 // Unit tests for pure list-rendering functions.
-// E2e tests for bliss list are in cmd/bliss/e2e/list_test.go.
+// E2e tests for bliss list are in e2e/list_test.go.
 
 func TestListSortKey(t *testing.T) {
 	cases := []struct {
