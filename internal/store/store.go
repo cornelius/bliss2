@@ -723,7 +723,9 @@ func (s *Store) GitSyncStatus() (remote string, ahead, behind int, err error) {
 
 // Sync fetches from the remote, pulls if behind, and pushes if ahead.
 // Returns the number of commits pushed and pulled.
-// Errors if no remote is configured or if the branches have diverged.
+// If the branches have diverged, the unpushed local commits are rebased onto
+// the remote; creation times survive because they come from author dates.
+// A conflicting rebase is aborted, leaving the store as it was.
 func (s *Store) Sync() (pushed, pulled int, err error) {
 	remotes, err := s.repo.Remotes()
 	if err != nil || len(remotes) == 0 {
@@ -749,7 +751,22 @@ func (s *Store) Sync() (pushed, pulled int, err error) {
 	ahead, _ := strconv.Atoi(strings.TrimSpace(string(aheadOut)))
 
 	if ahead > 0 && behind > 0 {
-		return 0, 0, fmt.Errorf("store has diverged from remote — resolve manually with git in %s", s.path)
+		// Store commits are made by bliss itself, so the rebase uses the same
+		// identity rather than requiring a git user to be configured.
+		rebase := exec.Command("git", "-C", s.path, "-c", "user.name=bliss", "-c", "user.email=bliss@local", "rebase", "@{u}")
+		if out, rerr := rebase.CombinedOutput(); rerr != nil {
+			if !s.rebaseInProgress() {
+				return 0, 0, fmt.Errorf("rebase failed: %s", strings.TrimSpace(string(out)))
+			}
+			if aout, aerr := exec.Command("git", "-C", s.path, "rebase", "--abort").CombinedOutput(); aerr != nil {
+				return 0, 0, fmt.Errorf("rebase conflicted and could not be aborted: %s", strings.TrimSpace(string(aout)))
+			}
+			return 0, 0, fmt.Errorf("store has diverged from remote and changes conflict; resolve manually with git in %s", s.path)
+		}
+		if out, perr := exec.Command("git", "-C", s.path, "push").CombinedOutput(); perr != nil {
+			return 0, behind, fmt.Errorf("push failed: %s", strings.TrimSpace(string(out)))
+		}
+		return ahead, behind, nil
 	}
 
 	if behind > 0 {
@@ -767,4 +784,24 @@ func (s *Store) Sync() (pushed, pulled int, err error) {
 	}
 
 	return 0, 0, nil
+}
+
+// rebaseInProgress reports whether a stopped rebase is waiting in the store.
+// Both state directories are checked because git uses either depending on
+// the rebase backend.
+func (s *Store) rebaseInProgress() bool {
+	for _, name := range []string{"rebase-merge", "rebase-apply"} {
+		out, err := exec.Command("git", "-C", s.path, "rev-parse", "--git-path", name).Output()
+		if err != nil {
+			continue
+		}
+		p := strings.TrimSpace(string(out))
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(s.path, p)
+		}
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
 }

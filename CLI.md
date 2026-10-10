@@ -263,7 +263,8 @@ bliss status
 Syncs the store with its remote: fetches, pulls if behind, pushes if ahead.
 
 - Errors if no remote is configured.
-- Pull is fast-forward only. If the store has diverged, bliss reports an error and leaves resolution to the user (`git` in `~/.bliss2/`).
+- If the store has diverged, local commits are rebased onto the remote and then pushed. Rebasing keeps history linear and is safe because local commits are unpushed and todo creation times come from author dates.
+- If the rebase conflicts (the same file was changed on both sides), it is aborted, the store is left as it was, and bliss reports an error and leaves resolution to the user (`git` in `~/.bliss2/`).
 
 ```
 bliss sync

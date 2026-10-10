@@ -95,6 +95,27 @@ func setupRemote(t *testing.T, home string) string {
 	return bare
 }
 
+// cloneMachine simulates a second machine whose store is a clone of bare.
+// Returns its home directory and HOME-isolated environment.
+func cloneMachine(t *testing.T, bare string) (home string, env []string) {
+	t.Helper()
+	home, env = blissEnv(t)
+	if out, err := exec.Command("git", "clone", bare, filepath.Join(home, ".bliss2")).CombinedOutput(); err != nil {
+		t.Fatalf("git clone: %v\n%s", err, out)
+	}
+	return home, env
+}
+
+// git runs git in dir and returns its trimmed output.
+func git(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // advanceRemote clones the bare repo, adds an empty commit, and pushes it back,
 // simulating another machine having pushed new commits to the remote.
 func advanceRemote(t *testing.T, bare string) {

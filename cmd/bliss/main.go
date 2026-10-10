@@ -1230,20 +1230,19 @@ func syncCmd() *cobra.Command {
 				return err
 			}
 
-			switch {
-			case pushed > 0:
-				word := "commits"
-				if pushed == 1 {
-					word = "commit"
+			plural := func(n int) string {
+				if n == 1 {
+					return "commit"
 				}
-				fmt.Printf("%s %d %s.\n", stMuted.Render("Pushed"), pushed, word)
-			case pulled > 0:
-				word := "commits"
-				if pulled == 1 {
-					word = "commit"
-				}
-				fmt.Printf("%s %d %s.\n", stMuted.Render("Pulled"), pulled, word)
-			default:
+				return "commits"
+			}
+			if pulled > 0 {
+				fmt.Printf("%s %d %s.\n", stMuted.Render("Pulled"), pulled, plural(pulled))
+			}
+			if pushed > 0 {
+				fmt.Printf("%s %d %s.\n", stMuted.Render("Pushed"), pushed, plural(pushed))
+			}
+			if pushed == 0 && pulled == 0 {
 				fmt.Println(stMuted.Render("Already up to date."))
 			}
 
