@@ -100,7 +100,7 @@ func initCmd() *cobra.Command {
 				realHome = home
 			}
 			if realCwd == realHome {
-				return fmt.Errorf("cannot init a context in the home directory — use personal mode instead")
+				return fmt.Errorf("cannot init a context in the home directory; use personal mode instead")
 			}
 
 			previousContext, _ := blisscontext.ReadContextFile(cwd)

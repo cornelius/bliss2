@@ -51,13 +51,13 @@ func Open() (*Store, error) {
 	repo, err := git.PlainOpen(path)
 	if err != nil {
 		if err == git.ErrRepositoryNotExists {
-			return nil, fmt.Errorf("%s exists but is not a bliss2 store — please remove it to start fresh", path)
+			return nil, fmt.Errorf("%s exists but is not a bliss2 store; please remove it to start fresh", path)
 		}
 		return nil, fmt.Errorf("opening store git repo at %s: %w", path, err)
 	}
 
 	if _, err := os.Stat(filepath.Join(path, "bliss2-was-here")); os.IsNotExist(err) {
-		return nil, fmt.Errorf("%s exists but is not a bliss2 store — please remove it to start fresh", path)
+		return nil, fmt.Errorf("%s exists but is not a bliss2 store; please remove it to start fresh", path)
 	}
 
 	return &Store{path: path, repo: repo}, nil
@@ -729,7 +729,7 @@ func (s *Store) GitSyncStatus() (remote string, ahead, behind int, err error) {
 func (s *Store) Sync() (pushed, pulled int, err error) {
 	remotes, err := s.repo.Remotes()
 	if err != nil || len(remotes) == 0 {
-		return 0, 0, fmt.Errorf("no remote configured — add one with git in %s", s.path)
+		return 0, 0, fmt.Errorf("no remote configured; add one with git in %s", s.path)
 	}
 
 	if out, ferr := exec.Command("git", "-C", s.path, "fetch").CombinedOutput(); ferr != nil {
